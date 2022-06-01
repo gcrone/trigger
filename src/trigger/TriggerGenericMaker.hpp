@@ -151,7 +151,15 @@ private:
         worker.process(in);
       }
     }
-    worker.drain();
+    // P. Rodrigues 2022-06-01. The argument here is whether to drop
+    // buffered outputs. We choose 'true' because some significant
+    // time can pass between the last input sent by readout and when
+    // we receive a stop. (This happens because stop is sent serially
+    // to readout units before trigger, and each RU takes ~1s to
+    // stop). So by the time we receive a stop command, our buffered
+    // outputs are stale and will cause tardy warnings from the zipper
+    // downstream
+    worker.drain(true);
     TLOG() << get_name() << ": Exiting do_work() method, received " << m_received_count << " inputs and successfully sent "
            << m_sent_count << " outputs. ";
     worker.reset();
@@ -225,7 +233,7 @@ public:
     }
   }
 
-  void drain() {}
+  void drain(bool) {}
 };
 
 // Partial specialization for IN = Set<A>, OUT = Set<B> and assumes the MAKER has:
@@ -369,7 +377,7 @@ public: // NOLINT
     TLOG_DEBUG(4) << "process() done. Advanced output buffer by " << n_output_windows << " output windows";
   }
 
-  void drain()
+  void drain(bool drop)
   {
     // First, send anything in the input buffer to the algorithm, and add any
     // results to output buffer
@@ -392,18 +400,22 @@ public: // NOLINT
           daqdataformats::GeoID::SystemType::kDataSelection, m_parent.m_geoid_region_id, m_parent.m_geoid_element_id);
 
       if (out.type == Set<B>::Type::kHeartbeat) {
-        if (!m_parent.send(std::move(out))) {
-          ers::error(AlgorithmFailedToSend(ERS_HERE, m_parent.get_name(), m_parent.m_algorithm_name));
-          // out is dropped
+        if(!drop) {
+          if (!m_parent.send(std::move(out))) {
+            ers::error(AlgorithmFailedToSend(ERS_HERE, m_parent.get_name(), m_parent.m_algorithm_name));
+            // out is dropped
+          }
         }
       }
       // Only form and send Set<B> if it has a nonzero number of objects
       else if (out.type == Set<B>::Type::kPayload && out.objects.size() != 0) {
         TLOG_DEBUG(1) << "Output set window ready with start time " << out.start_time << " end time " << out.end_time
                       << " and " << out.objects.size() << " members";
-        if (!m_parent.send(std::move(out))) {
-          ers::error(AlgorithmFailedToSend(ERS_HERE, m_parent.get_name(), m_parent.m_algorithm_name));
-          // out is dropped
+        if (!drop) {
+          if (!m_parent.send(std::move(out))) {
+            ers::error(AlgorithmFailedToSend(ERS_HERE, m_parent.get_name(), m_parent.m_algorithm_name));
+            // out is dropped
+          }
         }
       }
     }
@@ -494,7 +506,7 @@ public: // NOLINT
     }
   }
 
-  void drain()
+  void drain(bool drop)
   {
     // Send anything in the input buffer to the algorithm, and put any results
     // on the output queue
@@ -504,11 +516,13 @@ public: // NOLINT
       std::vector<OUT> out_vec;
       process_slice(time_slice, out_vec);
       while (out_vec.size()) {
-        if (!m_parent.send(std::move(out_vec.back()))) {
-          ers::error(AlgorithmFailedToSend(ERS_HERE, m_parent.get_name(), m_parent.m_algorithm_name));
-          // out.back() is dropped
+        if (!drop) {
+          if (!m_parent.send(std::move(out_vec.back()))) {
+            ers::error(AlgorithmFailedToSend(ERS_HERE, m_parent.get_name(), m_parent.m_algorithm_name));
+            // out.back() is dropped
+          }
+          out_vec.pop_back();
         }
-        out_vec.pop_back();
       }
     }
   }
