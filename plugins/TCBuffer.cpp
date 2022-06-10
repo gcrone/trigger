@@ -107,7 +107,12 @@ TCBuffer::do_work(std::atomic<bool>& running_flag)
     std::optional<dfmessages::DataRequest> data_request = m_input_queue_dr->try_receive(std::chrono::milliseconds(0));
     if (data_request.has_value()) {
       auto& info = data_request->request_information;
-      TLOG_DEBUG(2) << "Got data request with component " << info.component << ", window_begin " << info.window_begin << ", window_end " << info.window_end;
+      TLOG_DEBUG(2) << "Got data request with component " << info.component << ", window_begin " << info.window_begin
+                    << ", window_end" << info.window_end << ", trig/seq_number "
+                    << data_request->trigger_number << "." << data_request->sequence_number
+                    << ", runno " << data_request->run_number
+                    << ", trig timestamp " << data_request->trigger_timestamp
+                    << ", dest " << data_request->data_destination;
       popped_anything = true;
       ++n_requests_received;
       m_request_handler_impl->issue_request(*data_request, false);
