@@ -14,6 +14,7 @@
 #include "trigger/timingtriggercandidatemakerinfo/InfoNljs.hpp"
 
 #include "appfwk/DAQModule.hpp"
+#include "daqdataformats/Types.hpp"
 #include "dfmessages/HSIEvent.hpp"
 #include "iomanager/Receiver.hpp"
 #include "iomanager/Sender.hpp"
@@ -73,6 +74,8 @@ private:
   std::atomic<metric_counter_type> m_tc_sent_count{ 0 };
   std::atomic<metric_counter_type> m_tc_sig_type_err_count{ 0 };
   std::atomic<metric_counter_type> m_tc_total_count{ 0 };
+
+  std::atomic<daqdataformats::run_number_t> m_run_number;
 };
 } // namespace trigger
 } // namespace dunedaq
