@@ -157,6 +157,15 @@ ERS_DECLARE_ISSUE_BASE(trigger,
                        ((std::string)name),
                        ((std::bitset<16>)trigger_type))
 
+ERS_DECLARE_ISSUE_BASE(trigger,
+                       InvalidHSIEventRunNumber,
+                       appfwk::GeneralDAQModuleIssue,
+                       "An invalid run number was received in an HSIEvent, "
+                         << "received=" << received << ", expected=" << expected << ", timestamp=" << ts
+                         << ", sequence_count=" << seq,
+                       ((std::string)name),
+                       ((size_t)received)((size_t)expected)((size_t)ts)((size_t)seq))
+
 } // namespace dunedaq
 
 #endif // TRIGGER_INCLUDE_TRIGGER_ISSUES_HPP_
