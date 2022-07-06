@@ -115,7 +115,7 @@ TCBuffer::do_work(std::atomic<bool>& running_flag)
                     << ", dest: " << data_request->data_destination;
       popped_anything = true;
       ++n_requests_received;
-      m_request_handler_impl->issue_request(*data_request, false);
+      m_request_handler_impl->issue_request(*data_request, true);
     }
 
     if (!popped_anything) {
