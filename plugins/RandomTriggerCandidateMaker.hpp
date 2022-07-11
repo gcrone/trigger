@@ -12,7 +12,7 @@
 #include "trigger/randomtriggercandidatemakerinfo/InfoNljs.hpp"
 
 #include "appfwk/DAQModule.hpp"
-#include "daqdataformats/GeoID.hpp"
+#include "daqdataformats/SourceID.hpp"
 #include "dfmessages/TimeSync.hpp"
 #include "dfmessages/TriggerDecision.hpp"
 #include "dfmessages/TriggerDecisionToken.hpp"

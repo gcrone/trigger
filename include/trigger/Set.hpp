@@ -9,7 +9,7 @@
 #ifndef TRIGGER_INCLUDE_TRIGGER_SET_HPP_
 #define TRIGGER_INCLUDE_TRIGGER_SET_HPP_
 
-#include "daqdataformats/GeoID.hpp"
+#include "daqdataformats/SourceID.hpp"
 #include "daqdataformats/Types.hpp"
 #include "detdataformats/trigger/Types.hpp"
 
@@ -26,7 +26,7 @@ class Set
 {
 public:
   using element_t = T;
-  using origin_t = daqdataformats::GeoID;
+  using origin_t = daqdataformats::SourceID;
   using timestamp_t = daqdataformats::timestamp_t;
 
   enum Type
@@ -45,9 +45,8 @@ public:
   daqdataformats::run_number_t run_number{ 0 };
   
   // Identify the instance creator/stream/source of this set.
-  origin_t origin{ daqdataformats::GeoID(daqdataformats::GeoID::SystemType::kDataSelection,
-                                         daqdataformats::GeoID::s_invalid_region_id,
-                                         daqdataformats::GeoID::s_invalid_element_id) };
+  origin_t origin{ daqdataformats::SourceID(daqdataformats::SourceID::Subsystem::kTRG,
+                                         daqdataformats::SourceID::s_invalid_id) };
 
   // Whether this Set is a regular bag-of-objects or a heartbeat
   Type type{ kUnknown };

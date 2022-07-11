@@ -16,7 +16,7 @@
 
 #include "appfwk/DAQModule.hpp"
 #include "appfwk/DAQModuleHelper.hpp"
-#include "daqdataformats/GeoID.hpp"
+#include "daqdataformats/SourceID.hpp"
 #include "iomanager/IOManager.hpp"
 #include "iomanager/Receiver.hpp"
 #include "iomanager/Sender.hpp"
@@ -44,10 +44,9 @@ namespace dunedaq::trigger {
 // >
 
 size_t
-zipper_stream_id(const daqdataformats::GeoID& geoid)
+zipper_stream_id(const daqdataformats::SourceID& sourceid)
 {
-  return (0xffff000000000000 & (static_cast<size_t>(geoid.system_type) << 48)) |
-         (0x0000ffff00000000 & (static_cast<size_t>(geoid.region_id) << 32)) | (0x00000000ffffffff & geoid.element_id);
+  return (0xffff000000000000 & (static_cast<size_t>(sourceid.subsystem) << 48)) | (0x00000000ffffffff & sourceid.id);
 }
 
 template<typename TSET>
@@ -89,7 +88,7 @@ public:
   size_t m_n_received{ 0 };
   size_t m_n_sent{ 0 };
   size_t m_n_tardy{ 0 };
-  std::map<daqdataformats::GeoID, size_t> m_tardy_counts;
+  std::map<daqdataformats::SourceID, size_t> m_tardy_counts;
 
   explicit TriggerZipper(const std::string& name)
     : DAQModule(name)
@@ -216,7 +215,7 @@ public:
       ++m_tardy_counts[tset.origin];
 
       ers::warning(TardyInputSet(
-                                 ERS_HERE, get_name(), tset.origin.region_id, tset.origin.element_id, tset.start_time, m_zm.get_origin() >> 1));
+                                 ERS_HERE, get_name(), tset.origin.id, tset.start_time, m_zm.get_origin() >> 1));
       m_cache.pop_front(); // vestigial
     }
     drain();
@@ -230,8 +229,7 @@ public:
       auto& tset = *lit; // list iterator
 
       // tell consumer "where" the set was produced
-      tset.origin.region_id = m_cfg.region_id;
-      tset.origin.element_id = m_cfg.element_id;
+      tset.origin.id = m_cfg.element_id;
       tset.seqno = m_next_seqno;
       ++m_next_seqno;
 

@@ -9,7 +9,7 @@
 #ifndef TRIGGER_INCLUDE_TRIGGER_TASET_HPP_
 #define TRIGGER_INCLUDE_TRIGGER_TASET_HPP_
 
-#include "dfmessages/GeoID_serialization.hpp"
+#include "dfmessages/SourceID_serialization.hpp"
 #include "serialization/Serialization.hpp"
 #include "trigger/Set.hpp"
 #include "trigger/TriggerActivity_serialization.hpp"

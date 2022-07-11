@@ -10,7 +10,7 @@
 #define TRIGGER_INCLUDE_TRIGGER_ISSUES_HPP_
 
 #include "appfwk/DAQModule.hpp"
-#include "daqdataformats/GeoID.hpp"
+#include "daqdataformats/SourceID.hpp"
 #include "daqdataformats/Types.hpp"
 #include "ers/Issue.hpp"
 #include "triggeralgs/Types.hpp"
@@ -34,7 +34,7 @@ ERS_DECLARE_ISSUE(trigger, TriggerInhibited, "Trigger is inhibited in run " << r
 ERS_DECLARE_ISSUE(trigger, TriggerStartOfRun, "Start of run " << runno, ((int64_t)runno))
 ERS_DECLARE_ISSUE(trigger, TriggerEndOfRun, "End of run " << runno, ((int64_t)runno))
 
-ERS_DECLARE_ISSUE(trigger, UnknownGeoID, "Unknown GeoID: " << geo_id, ((daqdataformats::GeoID)geo_id))
+ERS_DECLARE_ISSUE(trigger, UnknownGeoID, "Unknown SourceID: " << source_id, ((daqdataformats::SourceID)source_id))
 ERS_DECLARE_ISSUE(trigger, InvalidSystemType, "Unknown system type " << type, ((std::string)type))
 
 ERS_DECLARE_ISSUE_BASE(trigger,
@@ -96,10 +96,9 @@ ERS_DECLARE_ISSUE_BASE(trigger,
 ERS_DECLARE_ISSUE_BASE(trigger,
                        TardyInputSet,
                        appfwk::GeneralDAQModuleIssue,
-                       "Tardy input set from region " << region << " element " << element
+                       "Tardy input set from element " << element
                        << ". Set start time " << start_time << " but last sent time " << last_sent_time,
                        ((std::string)name),
-                       ((uint16_t)region) // NOLINT(build/unsigned)
                        ((uint32_t)element) // NOLINT(build/unsigned)
                        ((daqdataformats::timestamp_t)start_time)
                        ((daqdataformats::timestamp_t)last_sent_time))

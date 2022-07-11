@@ -11,7 +11,6 @@ local hier = {
     delay: s.number("Delay", dtype='u8'),
 
     // fixme: this should be factored, not copy-pasted
-    region_id : s.number("RegionId", "u2"),
     element_id : s.number("ElementId", "u4"),
 
     conf : s.record("ConfParams", [
@@ -19,10 +18,8 @@ local hier = {
                 doc="Expected number of streams"),
         s.field("max_latency_ms", hier.delay,
                 doc="Max bound on latency, zero for unbound but lossless"),
-        s.field("region_id", hier.region_id,
-                doc="The GeoID region of output"),
         s.field("element_id", hier.element_id,
-                doc="The GeoID element of output"),
+                doc="The element of output"),
     ], doc="TriggerZipper configuration"),
 
   

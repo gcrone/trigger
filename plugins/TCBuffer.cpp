@@ -10,7 +10,7 @@
 
 #include "appfwk/DAQModuleHelper.hpp"
 #include "dfmessages/DataRequest.hpp"
-#include "daqdataformats/GeoID.hpp"
+#include "daqdataformats/SourceID.hpp"
 
 #include <chrono>
 #include <string>

@@ -12,7 +12,7 @@
 #include "hdf5libs/HDF5RawDataFile.hpp"
 
 #include <daqdataformats/Fragment.hpp>
-#include <daqdataformats/GeoID.hpp>
+#include <daqdataformats/SourceID.hpp>
 #include <daqdataformats/TimeSlice.hpp>
 #include <daqdataformats/TimeSliceHeader.hpp>
 #include <daqdataformats/Types.hpp>
@@ -139,16 +139,16 @@ main(int argc, char** argv)
     std::cout << "-----------------------------------------------------------------------------------" << std::endl;
     std::cout << "Trigger record " << record_id.first << std::endl;
     auto frag_paths =
-      hdf5file.get_fragment_dataset_paths(record_id, dunedaq::daqdataformats::GeoID::SystemType::kDataSelection);
+      hdf5file.get_fragment_dataset_paths(record_id, dunedaq::daqdataformats::SourceID::Subsystem::kTRG);
     for (auto const& frag_path : frag_paths) {
       auto frag_ptr = hdf5file.get_frag_ptr(frag_path);
-      if (frag_ptr->get_fragment_type() == dunedaq::daqdataformats::FragmentType::kTriggerPrimitives) {
+      if (frag_ptr->get_fragment_type() == dunedaq::daqdataformats::FragmentType::kTP) {
         print_tps(std::move(frag_ptr));
       }
-      if (frag_ptr->get_fragment_type() == dunedaq::daqdataformats::FragmentType::kTriggerActivities) {
+      if (frag_ptr->get_fragment_type() == dunedaq::daqdataformats::FragmentType::kTA) {
         print_tas(std::move(frag_ptr));
       }
-      if (frag_ptr->get_fragment_type() == dunedaq::daqdataformats::FragmentType::kTriggerCandidates) {
+      if (frag_ptr->get_fragment_type() == dunedaq::daqdataformats::FragmentType::kTC) {
         print_tcs(std::move(frag_ptr));
       }
 

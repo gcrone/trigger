@@ -5,7 +5,6 @@ local s = moo.oschema.schema(ns);
 local types = {
     size: s.number("Size", dtype="i8"),
 
-    region_id : s.number("region_id", "u2"),
     element_id : s.number("element_id", "u4"),
 
     conf: s.record("Conf", [
@@ -13,7 +12,6 @@ local types = {
       s.field("tpset_buffer_size", self.size, 100,
         doc="Maximum number of TPSet that buffer will store. If maximum reached, oldest is deleted to give room for new entry (circular buffer)"),
 
-      s.field("region", self.region_id, doc="GeoID region for sent fragments"),
 
       s.field("element", self.element_id, doc="GeoID element for sent fragments"),
 

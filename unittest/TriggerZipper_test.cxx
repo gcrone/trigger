@@ -31,20 +31,18 @@ using namespace dunedaq;
 
 BOOST_AUTO_TEST_SUITE(BOOST_TEST_MODULE)
 
-BOOST_AUTO_TEST_CASE(TPSet_GeoID_Init_System_Type_Is_DataSelection)
+BOOST_AUTO_TEST_CASE(TPSet_GeoID_Init_Subsystem_Is_DataSelection)
 {
   trigger::TPSet tpset;
-  BOOST_CHECK_EQUAL(tpset.origin.system_type, daqdataformats::GeoID::SystemType::kDataSelection);
+  BOOST_CHECK_EQUAL(tpset.origin.subsystem, daqdataformats::SourceID::Subsystem::kTRG);
 }
 
 BOOST_AUTO_TEST_CASE(ZipperStreamIDFromGeoID)
 {
   trigger::TPSet tpset1, tpset2;
 
-  tpset1.origin.region_id = 1;
-  tpset1.origin.element_id = 1;
-  tpset2.origin.region_id = 2;
-  tpset2.origin.element_id = 2;
+  tpset1.origin.id = 1;
+  tpset2.origin.id = 2;
 
   auto id1 = trigger::zipper_stream_id(tpset1.origin);
   auto id2 = trigger::zipper_stream_id(tpset2.origin);
@@ -73,8 +71,7 @@ struct TPSetSrc
   trigger::TPSet operator()(timestamp_t datatime)
   {
     ++tpset.seqno;
-    tpset.origin.region_id = 0;
-    tpset.origin.element_id = element_id;
+    tpset.origin.id = element_id;
     tpset.start_time = datatime;
     tpset.end_time = datatime + dt;
     return tpset;
@@ -122,7 +119,7 @@ BOOST_AUTO_TEST_CASE(ZipperScenario1)
   zip->set_input("zipper_input");
   zip->set_output("zipper_output");
 
-  trigger::TPZipper::cfg_t cfg{ 2, 100, 1, 20 };
+  trigger::TPZipper::cfg_t cfg{ 2, 100, 1 };
   nlohmann::json jcfg = cfg, jempty;
   zip->do_configure(jcfg);
 

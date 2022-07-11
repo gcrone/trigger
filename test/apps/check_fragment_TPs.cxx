@@ -41,7 +41,7 @@ main(int argc, char** argv)
   std::map<int, MyTriggerRecord> trigger_records;
 
   std::regex header_regex("^//TriggerRecord([0-9]+)/TriggerRecordHeader$", std::regex::extended);
-  std::regex trigger_fragment_regex("^//TriggerRecord([0-9]+)/Trigger/Region[0-9]+/Element[0-9]+$",
+  std::regex trigger_fragment_regex("^//TriggerRecord([0-9]+)/Trigger/Element[0-9]+$",
                                     std::regex::extended);
 
   dunedaq::hdf5libs::HDF5RawDataFile decoder(filename);
@@ -56,12 +56,12 @@ main(int argc, char** argv)
     
     for(size_t ic=0; ic < trigger_records[trigger_number].header->get_num_requested_components(); ++ic){
 
-      auto const& comp_geoid = trigger_records[trigger_number].header->at(ic).component;
+      auto const& comp_sourceid = trigger_records[trigger_number].header->at(ic).component;
 
-      if(comp_geoid.system_type != dunedaq::daqdataformats::GeoID::SystemType::kDataSelection)
+      if(comp_sourceid.subsystem != dunedaq::daqdataformats::SourceID::Subsystem::kTRG)
 	continue;
 
-      trigger_records[trigger_number].fragments.push_back(decoder.get_frag_ptr(trigger_number,seq_number,comp_geoid));
+      trigger_records[trigger_number].fragments.push_back(decoder.get_frag_ptr(trigger_number,seq_number, comp_sourceid));
     }
 
   }
@@ -82,7 +82,7 @@ main(int argc, char** argv)
     dunedaq::daqdataformats::timestamp_t window_begin = 0, window_end = 0;
     for (size_t i = 0; i < n_requests; ++i) {
       auto request = record.header->at(i);
-      if (request.component.system_type == dunedaq::daqdataformats::GeoID::SystemType::kDataSelection) {
+      if (request.component.subsystem == dunedaq::daqdataformats::SourceID::Subsystem::kTRG) {
         window_begin = request.window_begin;
         window_end = request.window_end;
       }
