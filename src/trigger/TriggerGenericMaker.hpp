@@ -130,6 +130,7 @@ private:
     m_received_count = 0;
     m_sent_count = 0;
     m_maker = make_maker(m_maker_conf);
+    worker.reconfigure();
     m_thread.start_working_thread(get_name());
   }
 
