@@ -11,12 +11,11 @@
 #include "TPSetBufferCreator.hpp"
 #include "trigger/Issues.hpp"
 
-#include "daqdataformats/FragmentHeader.hpp"
-#include "daqdataformats/GeoID.hpp"
-
 #include "appfwk/DAQModuleHelper.hpp"
 #include "appfwk/app/Nljs.hpp"
-
+#include "daqdataformats/FragmentHeader.hpp"
+#include "daqdataformats/GeoID.hpp"
+#include "iomanager/IOManager.hpp"
 #include "logging/Logging.hpp"
 
 #include <chrono>
@@ -49,9 +48,22 @@ TPSetBufferCreator::TPSetBufferCreator(const std::string& name)
 void
 TPSetBufferCreator::init(const nlohmann::json& init_data)
 {
-  m_input_queue_tps.reset(new tps_source_t(appfwk::queue_inst(init_data, "tpset_source")));
-  m_input_queue_dr.reset(new dr_source_t(appfwk::queue_inst(init_data, "data_request_source")));
-  m_output_queue_frag.reset(new fragment_sink_t(appfwk::queue_inst(init_data, "fragment_sink")));
+  auto qi = appfwk::connection_index(init_data, { "tpset_source", "data_request_source", "fragment_sink" });
+  try {
+    m_input_queue_tps = get_iom_receiver<trigger::TPSet>(qi["tpset_source"]);
+  } catch (const ers::Issue& excpt) {
+    throw InvalidQueueFatalError(ERS_HERE, get_name(), "tpset_source", excpt);
+  }
+  try {
+    m_input_queue_dr = get_iom_receiver<dfmessages::DataRequest>(qi["data_request_source"]);
+  } catch (const ers::Issue& excpt) {
+    throw InvalidQueueFatalError(ERS_HERE, get_name(), "data_request_source", excpt);
+  }
+  try {
+    m_output_queue_frag = get_iom_sender<std::pair<std::unique_ptr<daqdataformats::Fragment>, std::string>>(qi["fragment_sink"]);
+  } catch (const ers::Issue& excpt) {
+    throw InvalidQueueFatalError(ERS_HERE, get_name(), "fragment_sink", excpt);
+  }
 }
 
 void
@@ -177,13 +189,14 @@ TPSetBufferCreator::send_out_fragment(std::unique_ptr<daqdataformats::Fragment> 
   do {
     TLOG_DEBUG(2) << get_name() << ": Pushing the requested TPSet onto queue " << thisQueueName;
     try {
-      m_output_queue_frag->push(std::make_pair(std::move(frag_out), data_destination), m_queueTimeout);
+      auto the_pair = std::make_pair(std::move(frag_out), data_destination);
+      m_output_queue_frag->send(std::move(the_pair), m_queueTimeout);
       successfullyWasSent = true;
       ++sentCount;
-    } catch (const dunedaq::appfwk::QueueTimeoutExpired& excpt) {
+    } catch (const dunedaq::iomanager::TimeoutExpired& excpt) {
       std::ostringstream oss_warn;
       oss_warn << "push to output queue \"" << thisQueueName << "\"";
-      ers::warning(dunedaq::appfwk::QueueTimeoutExpired(ERS_HERE, get_name(), oss_warn.str(), m_queueTimeout.count()));
+      ers::warning(dunedaq::iomanager::TimeoutExpired(ERS_HERE, get_name(), oss_warn.str(), m_queueTimeout.count()));
     }
   } while (!successfullyWasSent && running_flag.load());
 }
@@ -196,12 +209,13 @@ TPSetBufferCreator::send_out_fragment(std::unique_ptr<daqdataformats::Fragment> 
   do {
     TLOG_DEBUG(2) << get_name() << ": Pushing the requested TPSet onto queue " << thisQueueName;
     try {
-      m_output_queue_frag->push(std::make_pair(std::move(frag_out), data_destination), m_queueTimeout);
+      auto the_pair = std::make_pair(std::move(frag_out), data_destination);
+      m_output_queue_frag->send(std::move(the_pair), m_queueTimeout);
       successfullyWasSent = true;
-    } catch (const dunedaq::appfwk::QueueTimeoutExpired& excpt) {
+    } catch (const dunedaq::iomanager::TimeoutExpired& excpt) {
       std::ostringstream oss_warn;
       oss_warn << "push to output queue \"" << thisQueueName << "\"";
-      ers::warning(dunedaq::appfwk::QueueTimeoutExpired(ERS_HERE, get_name(), oss_warn.str(), m_queueTimeout.count()));
+      ers::warning(dunedaq::iomanager::TimeoutExpired(ERS_HERE, get_name(), oss_warn.str(), m_queueTimeout.count()));
     }
   } while (!successfullyWasSent);
 }
@@ -224,7 +238,7 @@ TPSetBufferCreator::do_work(std::atomic<bool>& running_flag)
 
     // Block that receives TPSets and add them in buffer and check for pending data requests
     try {
-      m_input_queue_tps->pop(input_tpset, m_queueTimeout);
+      input_tpset = m_input_queue_tps->receive(m_queueTimeout);
       if (first) {
         TLOG() << get_name() << ": Got first TPSet, with start_time=" << input_tpset.start_time
                << " and end_time=" << input_tpset.end_time;
@@ -282,12 +296,12 @@ TPSetBufferCreator::do_work(std::atomic<bool>& running_flag)
         }
       } // end if(!m_dr_on_hold.empty())
 
-    } catch (const dunedaq::appfwk::QueueTimeoutExpired& excpt) {
+    } catch (const dunedaq::iomanager::TimeoutExpired& excpt) {
     }
 
     // Block that receives data requests and return fragments from buffer
     try {
-      m_input_queue_dr->pop(input_data_request, std::chrono::milliseconds(0));
+      input_data_request = m_input_queue_dr->receive(std::chrono::milliseconds(0));
       requested_tpset = m_tps_buffer->get_txsets_in_window(input_data_request.request_information.window_begin,
                                                            input_data_request.request_information.window_end);
       ++requestedCount;
@@ -326,7 +340,7 @@ TPSetBufferCreator::do_work(std::atomic<bool>& running_flag)
           TLOG() << get_name() << ": Data request failed!";
       }
 
-    } catch (const dunedaq::appfwk::QueueTimeoutExpired& excpt) {
+    } catch (const dunedaq::iomanager::TimeoutExpired& excpt) {
       // skip if no data request in the queue
       continue;
     }

@@ -12,9 +12,9 @@
 
 #include "appfwk/DAQModuleHelper.hpp"
 #include "appfwk/cmd/Nljs.hpp"
-#include "rcif/cmd/Nljs.hpp"
-
+#include "iomanager/IOManager.hpp"
 #include "logging/Logging.hpp"
+#include "rcif/cmd/Nljs.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -57,14 +57,13 @@ TriggerPrimitiveMaker::do_configure(const nlohmann::json& obj)
   // of the total timestamp range of all the streams, so we can keep
   // the timestamps of the multiple streams in sync when replaying,
   // even when they don't all start or end at the same time
-  
+
   m_earliest_first_tpset_timestamp = std::numeric_limits<triggeralgs::timestamp_t>::max();
   m_latest_last_tpset_timestamp = 0;
 
   for (auto& stream : m_conf.tp_streams) {
     TPStream this_stream;
-    this_stream.tpset_sink =
-      std::make_unique<appfwk::DAQSink<TPSet>>(appfwk::queue_inst(m_init_obj, stream.output_sink_name));
+    this_stream.tpset_sink = get_iom_sender<TPSet>(appfwk::connection_inst(m_init_obj, stream.output_sink_name));
 
     this_stream.tpsets = read_tpsets(stream.filename, stream.region_id, stream.element_id);
 
@@ -156,13 +155,7 @@ TriggerPrimitiveMaker::read_tpsets(std::string filename, int region, int element
 
       // If we crossed a time boundary, push the current TPSet and reset it
       if (current_tpset_number > prev_tpset_number) {
-        if (!tpset.objects.empty()) {
-          // We don't send empty TPSets, so there's no point creating them
-          tpsets.push_back(tpset);
-        }
-        prev_tpset_number = current_tpset_number;
-
-        tpset.start_time = current_tpset_number * m_conf.tpset_time_width + m_conf.tpset_time_offset;
+        tpset.start_time = prev_tpset_number * m_conf.tpset_time_width + m_conf.tpset_time_offset;
         tpset.end_time = tpset.start_time + m_conf.tpset_time_width;
         tpset.seqno = seqno;
         ++seqno;
@@ -172,6 +165,13 @@ TriggerPrimitiveMaker::read_tpsets(std::string filename, int region, int element
         tpset.origin.element_id = element;
 
         tpset.type = TPSet::Type::kPayload;
+
+        if (!tpset.objects.empty()) {
+          // We don't send empty TPSets, so there's no point creating them
+          tpsets.push_back(tpset);
+        }
+        prev_tpset_number = current_tpset_number;
+
         tpset.objects.clear();
       }
       tpset.objects.push_back(tp);
@@ -183,14 +183,14 @@ TriggerPrimitiveMaker::read_tpsets(std::string filename, int region, int element
     // We don't send empty TPSets, so there's no point creating them
     tpsets.push_back(tpset);
   }
-  TLOG_DEBUG(0) << "Read " << seqno << " TPs into " << tpsets.size() << " TPSets, from file " << filename;  
+  TLOG_DEBUG(0) << "Read " << seqno << " TPs into " << tpsets.size() << " TPSets, from file " << filename;
   return tpsets;
 }
 
 void
 TriggerPrimitiveMaker::do_work(std::atomic<bool>& running_flag,
                                std::vector<TPSet>& tpsets,
-                               std::unique_ptr<appfwk::DAQSink<TPSet>>& tpset_sink,
+                               std::shared_ptr<iomanager::SenderConcept<TPSet>>& tpset_sink,
                                std::chrono::steady_clock::time_point earliest_timestamp_time)
 {
   TLOG(TLVL_ENTER_EXIT_METHODS) << get_name() << ": Entering do_work() method";
@@ -257,8 +257,9 @@ TriggerPrimitiveMaker::do_work(std::atomic<bool>& running_flag,
       ++generated_count;
       generated_tp_count += tpset.objects.size();
       try {
-        tpset_sink->push(tpset, m_queue_timeout);
-      } catch (const dunedaq::appfwk::QueueTimeoutExpired& e) {
+          TPSet tpset_copy(tpset);
+        tpset_sink->send(std::move(tpset_copy), m_queue_timeout);
+      } catch (const dunedaq::iomanager::TimeoutExpired& e) {
         ers::warning(e);
         ++push_failed_count;
       }

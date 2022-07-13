@@ -7,8 +7,6 @@
  */
 
 #include "../src/trigger/TPSetBuffer.hpp" // NOLINT
-#include "appfwk/DAQSink.hpp"
-#include "appfwk/DAQSource.hpp"
 
 #include "dfmessages/DataRequest.hpp"
 

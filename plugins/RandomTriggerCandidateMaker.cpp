@@ -9,23 +9,21 @@
 
 #include "RandomTriggerCandidateMaker.hpp"
 
-#include "daqdataformats/ComponentRequest.hpp"
+#include "trigger/Issues.hpp"
 
+#include "appfwk/DAQModuleHelper.hpp"
+#include "appfwk/app/Nljs.hpp"
+#include "daqdataformats/ComponentRequest.hpp"
+#include "detdataformats/trigger/Types.hpp"
 #include "dfmessages/TimeSync.hpp"
 #include "dfmessages/TriggerDecision.hpp"
 #include "dfmessages/TriggerInhibit.hpp"
 #include "dfmessages/Types.hpp"
+#include "iomanager/IOManager.hpp"
 #include "logging/Logging.hpp"
-#include "triggeralgs/TriggerCandidate.hpp"
-
-#include "trigger/Issues.hpp"
-
 #include "timinglibs/TimestampEstimator.hpp"
 #include "timinglibs/TimestampEstimatorSystem.hpp"
-
-#include "appfwk/DAQModuleHelper.hpp"
-#include "appfwk/app/Nljs.hpp"
-#include "detdataformats/trigger/Types.hpp"
+#include "triggeralgs/TriggerCandidate.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -52,9 +50,8 @@ RandomTriggerCandidateMaker::RandomTriggerCandidateMaker(const std::string& name
 void
 RandomTriggerCandidateMaker::init(const nlohmann::json& obj)
 {
-  m_time_sync_source.reset(new appfwk::DAQSource<dfmessages::TimeSync>(appfwk::queue_inst(obj, "time_sync_source")));
-  m_trigger_candidate_sink.reset(
-    new appfwk::DAQSink<triggeralgs::TriggerCandidate>(appfwk::queue_inst(obj, "trigger_candidate_sink")));
+  m_time_sync_source = get_iom_receiver<dfmessages::TimeSync>(appfwk::connection_inst(obj, "time_sync_source"));
+  m_trigger_candidate_sink = get_iom_sender<triggeralgs::TriggerCandidate>(appfwk::connection_inst(obj, "trigger_candiate_sink"));
 }
 
 void
@@ -170,7 +167,7 @@ RandomTriggerCandidateMaker::send_trigger_candidates()
 
     TLOG_DEBUG(1) << get_name() << " at timestamp " << m_timestamp_estimator->get_timestamp_estimate()
                   << ", pushing a candidate with timestamp " << candidate.time_candidate;
-    m_trigger_candidate_sink->push(candidate, std::chrono::milliseconds(10));
+    m_trigger_candidate_sink->send(std::move(candidate), std::chrono::milliseconds(10));
     m_tc_sent_count++;
 
     next_trigger_timestamp += get_interval(gen);

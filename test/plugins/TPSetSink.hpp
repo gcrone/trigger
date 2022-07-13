@@ -15,7 +15,7 @@
 #include "trigger/TPSet.hpp"
 
 #include "appfwk/DAQModule.hpp"
-#include "appfwk/DAQSource.hpp"
+#include "iomanager/Receiver.hpp"
 
 #include <memory>
 #include <string>
@@ -54,8 +54,8 @@ private:
   std::thread m_thread;
 
   // Queue sources and sinks
-  using source_t = appfwk::DAQSource<TPSet>;
-  std::unique_ptr<source_t> m_tpset_source;
+  using source_t = iomanager::ReceiverConcept<TPSet>;
+  std::shared_ptr<source_t> m_tpset_source;
 };
 } // namespace trigger
 } // namespace dunedaq

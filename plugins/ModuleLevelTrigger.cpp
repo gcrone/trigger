@@ -9,24 +9,21 @@
 
 #include "ModuleLevelTrigger.hpp"
 
+#include "trigger/Issues.hpp"
+#include "trigger/LivetimeCounter.hpp"
+#include "trigger/moduleleveltrigger/Nljs.hpp"
+
+#include "appfwk/DAQModuleHelper.hpp"
+#include "appfwk/app/Nljs.hpp"
 #include "daqdataformats/ComponentRequest.hpp"
 #include "detdataformats/trigger/Types.hpp"
-
 #include "dfmessages/TimeSync.hpp"
 #include "dfmessages/TriggerDecision.hpp"
 #include "dfmessages/TriggerInhibit.hpp"
 #include "dfmessages/Types.hpp"
+#include "iomanager/IOManager.hpp"
 #include "logging/Logging.hpp"
-
-#include "trigger/Issues.hpp"
-#include "trigger/moduleleveltrigger/Nljs.hpp"
-#include "trigger/LivetimeCounter.hpp"
-
 #include "timinglibs/TimestampEstimator.hpp"
-
-#include "appfwk/DAQModuleHelper.hpp"
-#include "appfwk/app/Nljs.hpp"
-#include "networkmanager/NetworkManager.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -57,8 +54,7 @@ ModuleLevelTrigger::ModuleLevelTrigger(const std::string& name)
 void
 ModuleLevelTrigger::init(const nlohmann::json& iniobj)
 {
-  m_candidate_source.reset(
-    new appfwk::DAQSource<triggeralgs::TriggerCandidate>(appfwk::queue_inst(iniobj, "trigger_candidate_source")));
+  m_candidate_source = get_iom_receiver<triggeralgs::TriggerCandidate>(appfwk::connection_inst(iniobj, "trigger_candidate_source"));
 }
 
 void
@@ -101,7 +97,6 @@ ModuleLevelTrigger::do_configure(const nlohmann::json& confobj)
   m_inhibit_connection = params.dfo_busy_connection;
   m_hsi_passthrough = params.hsi_trigger_type_passthrough;
 
-  networkmanager::NetworkManager::get().start_listening(m_inhibit_connection);
   m_configured_flag.store(true);
 
   m_readout_window_map[static_cast<detdataformats::trigger::TriggerCandidateData::Type>(params.c0.candidate_type)] = { params.c0.time_before, params.c0.time_after };
@@ -129,8 +124,8 @@ ModuleLevelTrigger::do_start(const nlohmann::json& startobj)
 
   m_livetime_counter.reset(new LivetimeCounter(LivetimeCounter::State::kPaused));
 
-  networkmanager::NetworkManager::get().register_callback(
-    m_inhibit_connection, std::bind(&ModuleLevelTrigger::dfo_busy_callback, this, std::placeholders::_1));
+  m_inhibit_receiver = get_iom_receiver<dfmessages::TriggerInhibit>(m_inhibit_connection);
+  m_inhibit_receiver->add_callback(std::bind(&ModuleLevelTrigger::dfo_busy_callback, this, std::placeholders::_1));
 
   m_send_trigger_decisions_thread = std::thread(&ModuleLevelTrigger::send_trigger_decisions, this);
   pthread_setname_np(m_send_trigger_decisions_thread.native_handle(), "mlt-trig-dec");
@@ -149,12 +144,13 @@ ModuleLevelTrigger::do_stop(const nlohmann::json& /*stopobj*/)
 
   m_running_flag.store(false);
   m_send_trigger_decisions_thread.join();
-  
-  m_lc_deadtime = m_livetime_counter->get_time(LivetimeCounter::State::kDead) + m_livetime_counter->get_time(LivetimeCounter::State::kPaused);
+
+  m_lc_deadtime = m_livetime_counter->get_time(LivetimeCounter::State::kDead) +
+                  m_livetime_counter->get_time(LivetimeCounter::State::kPaused);
   TLOG(3) << "LivetimeCounter - total deadtime+paused: " << m_lc_deadtime << std::endl;
   m_livetime_counter.reset(); // Calls LivetimeCounter dtor?
 
-  networkmanager::NetworkManager::get().clear_callback(m_inhibit_connection);
+  m_inhibit_receiver->remove_callback();
   ers::info(TriggerEndOfRun(ERS_HERE, m_run_number));
 }
 
@@ -180,7 +176,6 @@ void
 ModuleLevelTrigger::do_scrap(const nlohmann::json& /*scrapobj*/)
 {
   m_links.clear();
-  networkmanager::NetworkManager::get().stop_listening(m_inhibit_connection);
   m_configured_flag.store(false);
 }
 
@@ -249,13 +244,11 @@ ModuleLevelTrigger::send_trigger_decisions()
 
   // New buffering logic here
   while (m_running_flag) {
-    triggeralgs::TriggerCandidate tc;
-    try {
-      m_candidate_source->pop(tc, std::chrono::milliseconds(100));
+    std::optional<triggeralgs::TriggerCandidate> tc = m_candidate_source->try_receive(std::chrono::milliseconds(100));
+    if (!tc.has_value()) {
       ++m_tc_received_count;
-      add_tc(tc);
+      add_tc(*tc);
       TLOG_DEBUG(3) << "pending tds size: " << m_pending_tds.size();
-    } catch (appfwk::QueueTimeoutExpired&) {
       // The condition to exit the loop is that we've been stopped and
       // there's nothing left on the input queue
       if (!m_running_flag.load()) {
@@ -304,9 +297,10 @@ ModuleLevelTrigger::send_trigger_decisions()
   m_lc_kDead_count = m_livetime_counter->get_time(LivetimeCounter::State::kDead);
   m_lc_kLive = m_lc_kLive_count;
   m_lc_kPaused = m_lc_kPaused_count;
-  m_lc_kDead = m_lc_kDead_count; 
+  m_lc_kDead = m_lc_kDead_count;
 
-  m_lc_deadtime = m_livetime_counter->get_time(LivetimeCounter::State::kDead) + m_livetime_counter->get_time(LivetimeCounter::State::kPaused);
+  m_lc_deadtime = m_livetime_counter->get_time(LivetimeCounter::State::kDead) +
+                  m_livetime_counter->get_time(LivetimeCounter::State::kPaused);
 }
 
 void
@@ -320,12 +314,9 @@ ModuleLevelTrigger::call_tc_decision(const ModuleLevelTrigger::PendingTD& m_pend
                   << decision.trigger_timestamp << " number of links " << decision.components.size()
                   << " based on TC of type " << static_cast<std::underlying_type_t<decltype(m_pending_td.contributing_tcs[m_earliest_tc_index].type)>>(m_pending_td.contributing_tcs[m_earliest_tc_index].type);
 
-    try {
-      auto serialised_decision = serialization::serialize(decision, serialization::kMsgPack);
-      networkmanager::NetworkManager::get().send_to(m_trigger_decision_connection,
-                                                    static_cast<const void*>(serialised_decision.data()),
-                                                    serialised_decision.size(),
-                                                    std::chrono::milliseconds(1));
+    try { 
+      auto td_sender = get_iom_sender<dfmessages::TriggerDecision>(m_trigger_decision_connection);
+      td_sender->send(std::move(decision), std::chrono::milliseconds(1));
       m_td_sent_count++;
       m_td_sent_tc_count += m_pending_td.contributing_tcs.size(); 
       m_last_trigger_number++;
@@ -353,7 +344,6 @@ ModuleLevelTrigger::call_tc_decision(const ModuleLevelTrigger::PendingTD& m_pend
 
 void
 ModuleLevelTrigger::add_tc(const triggeralgs::TriggerCandidate& tc) {
-  TLOG_DEBUG(3) << tc.time_candidate;
   bool added_to_existing = false;
   int64_t tc_wallclock_arrived = std::chrono::duration_cast<std::chrono::milliseconds>(system_clock::now().time_since_epoch()).count();
 
@@ -451,11 +441,8 @@ ModuleLevelTrigger::get_earliest_tc_index(const PendingTD& m_pending_td) {
 }
 
 void
-ModuleLevelTrigger::dfo_busy_callback(ipm::Receiver::Response message)
+ModuleLevelTrigger::dfo_busy_callback(dfmessages::TriggerInhibit& inhibit)
 {
-
-  auto inhibit = serialization::deserialize<dfmessages::TriggerInhibit>(message.data);
-
   if (inhibit.run_number == m_run_number) {
     m_dfo_is_busy = inhibit.busy;
     m_livetime_counter->set_state(LivetimeCounter::State::kDead);

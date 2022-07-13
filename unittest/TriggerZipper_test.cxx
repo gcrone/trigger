@@ -9,7 +9,10 @@
 // use TP as representative specialization
 #include "../plugins/TPZipper.hpp" // NOLINT
 
-#include "appfwk/QueueRegistry.hpp"
+#include "iomanager/IOManager.hpp"
+#include "iomanager/Queue.hpp"
+#include "iomanager/Receiver.hpp"
+#include "iomanager/Sender.hpp"
 
 /**
  * @brief Name of this test module
@@ -55,9 +58,9 @@ BOOST_AUTO_TEST_CASE(ZipperStreamIDFromGeoID)
   BOOST_CHECK_EQUAL(n2, id2);
 }
 
-using tpset_queue_t = appfwk::Queue<trigger::TPSet>;
-using duration_t = tpset_queue_t::duration_t;
-using tpset_queue_ptr = std::shared_ptr<tpset_queue_t>;
+using receiver_t = std::shared_ptr<iomanager::ReceiverConcept<trigger::TPSet>>;
+using sender_t = std::shared_ptr<iomanager::SenderConcept<trigger::TPSet>>;
+using duration_t = iomanager::Queue<trigger::TPSet>::duration_t;
 
 struct TPSetSrc
 {
@@ -79,45 +82,45 @@ struct TPSetSrc
 };
 
 static void
-pop_must_timeout(tpset_queue_ptr out)
+pop_must_timeout(receiver_t out)
 {
   TLOG() << "Popping assuming a timeout";
-  trigger::TPSet tpset;
-  BOOST_CHECK_THROW(out->pop(tpset, (duration_t)1000), appfwk::QueueTimeoutExpired);
+  BOOST_CHECK_THROW(out->receive((duration_t)1000), iomanager::TimeoutExpired);
 }
 static trigger::TPSet
-pop_must_succeed(tpset_queue_ptr out)
+pop_must_succeed(receiver_t out)
 {
   TLOG() << "Popping assuming no waiting";
   trigger::TPSet tpset;
-  BOOST_CHECK_NO_THROW(out->pop(tpset, (duration_t)1000); // no exception expected
+  BOOST_CHECK_NO_THROW(tpset = out->receive((duration_t)1000); // no exception expected
   );
-  TLOG() << "Popped " << tpset.origin << " @ " << tpset.start_time ;
+  TLOG() << "Popped " << tpset.origin << " @ " << tpset.start_time;
   return tpset;
 }
 
 static void
-push0(tpset_queue_ptr in, trigger::TPSet&& tpset)
+push0(sender_t in, trigger::TPSet tpset)
 {
-  TLOG() << "Pushing " << tpset.origin << " @ " << tpset.start_time ;
-  assert(in->can_push());
-  in->push(std::move(tpset), (duration_t)0);
+  TLOG() << "Pushing " << tpset.origin << " @ " << tpset.start_time;
+  in->send(std::move(tpset), (duration_t)0);
 }
 
 BOOST_AUTO_TEST_CASE(ZipperScenario1)
 {
-  auto& qr = appfwk::QueueRegistry::get();
+  iomanager::ConnectionIds_t connections;
+  connections.emplace_back(
+    iomanager::ConnectionId{ "zipper_input", iomanager::ServiceType::kQueue, "trigger::TPSet", "queue://StdDeQueue:10" });
+  connections.emplace_back(
+    iomanager::ConnectionId{ "zipper_output", iomanager::ServiceType::kQueue, "trigger::TPSet", "queue://StdDeQueue:10" });
+  iomanager::IOManager::get()->configure(connections);
 
-  qr.configure({ { "source", appfwk::QueueConfig{ appfwk::QueueConfig::kStdDeQueue, 10 } },
-                 { "sink", appfwk::QueueConfig{ appfwk::QueueConfig::kStdDeQueue, 10 } } });
-
-  auto in = qr.get_queue<trigger::TPSet>("source");
-  auto out = qr.get_queue<trigger::TPSet>("sink");
+  auto in = dunedaq::get_iom_sender<trigger::TPSet>("zipper_input");
+  auto out = dunedaq::get_iom_receiver<trigger::TPSet>("zipper_output");
 
   auto zip = std::make_unique<trigger::TPZipper>("zs1");
 
-  zip->set_input("source");
-  zip->set_output("sink");
+  zip->set_input("zipper_input");
+  zip->set_output("zipper_output");
 
   trigger::TPZipper::cfg_t cfg{ 2, 100, 1, 20 };
   nlohmann::json jcfg = cfg, jempty;

@@ -8,6 +8,8 @@
 
 #include "FakeTPCreatorHeartbeatMaker.hpp"
 
+#include "appfwk/DAQModuleHelper.hpp"
+#include "iomanager/IOManager.hpp"
 #include "rcif/cmd/Nljs.hpp"
 
 #include <string>
@@ -32,8 +34,8 @@ void
 FakeTPCreatorHeartbeatMaker::init(const nlohmann::json& iniobj)
 {
   try {
-    m_input_queue.reset(new source_t(appfwk::queue_inst(iniobj, "tpset_source")));
-    m_output_queue.reset(new sink_t(appfwk::queue_inst(iniobj, "tpset_sink")));
+    m_input_queue = get_iom_receiver<trigger::TPSet>(appfwk::connection_inst(iniobj, "tpset_source"));
+    m_output_queue = get_iom_sender<trigger::TPSet>(appfwk::connection_inst(iniobj, "tpset_sink"));
   } catch (const ers::Issue& excpt) {
     throw dunedaq::trigger::InvalidQueueFatalError(ERS_HERE, get_name(), "input/output", excpt);
   }
@@ -63,7 +65,7 @@ FakeTPCreatorHeartbeatMaker::do_start(const nlohmann::json& args)
 {
   rcif::cmd::StartParams start_params = args.get<rcif::cmd::StartParams>();
   m_run_number = start_params.run;
-  
+
   m_thread.start_working_thread("heartbeater");
   TLOG_DEBUG(2) << get_name() + " successfully started.";
 }
@@ -91,12 +93,11 @@ FakeTPCreatorHeartbeatMaker::do_work(std::atomic<bool>& running_flag)
 
   daqdataformats::timestamp_t last_sent_heartbeat_time;
 
+  TPSet::seqno_t sequence_number = 0;
+  
   while (true) {
-    TPSet tpset;
-    try {
-      m_input_queue->pop(tpset, m_queue_timeout);
-      m_tpset_received_count++;
-    } catch (const dunedaq::appfwk::QueueTimeoutExpired& excpt) {
+    std::optional<TPSet> tpset = m_input_queue->try_receive(m_queue_timeout);
+    if(!tpset.has_value()){
       // The condition to exit the loop is that we've been stopped and
       // there's nothing left on the input queue
       if (!running_flag.load()) {
@@ -106,9 +107,14 @@ FakeTPCreatorHeartbeatMaker::do_work(std::atomic<bool>& running_flag)
       }
     }
 
-    TLOG_DEBUG(2) << "Activity received.";
+    // We got a TPSet
+    m_tpset_received_count++;
+    if (m_geoid.region_id == daqdataformats::GeoID::s_invalid_region_id) {
+      m_geoid = tpset->origin;
+    }
+    TLOG_DEBUG(3) << "Activity received.";
 
-    daqdataformats::timestamp_t current_tpset_start_time = tpset.start_time;
+    daqdataformats::timestamp_t current_tpset_start_time = tpset->start_time;
 
     bool send_heartbeat =
       should_send_heartbeat(last_sent_heartbeat_time, current_tpset_start_time, is_first_tpset_received);
@@ -119,31 +125,36 @@ FakeTPCreatorHeartbeatMaker::do_work(std::atomic<bool>& running_flag)
     if (send_heartbeat) {
       TPSet tpset_heartbeat;
       get_heartbeat(tpset_heartbeat, current_tpset_start_time);
+      tpset_heartbeat.seqno = sequence_number;
+      ++sequence_number;
       while (!successfully_sent_heartbeat) {
         try {
-          m_output_queue->push(tpset_heartbeat, m_queue_timeout);
+          m_output_queue->send(std::move(tpset_heartbeat), m_queue_timeout);
           successfully_sent_heartbeat = true;
           m_heartbeats_sent++;
           last_sent_heartbeat_time = current_tpset_start_time;
           is_first_tpset_received = false;
-        } catch (const dunedaq::appfwk::QueueTimeoutExpired& excpt) {
+        } catch (const dunedaq::iomanager::TimeoutExpired& excpt) {
           std::ostringstream oss_warn;
           oss_warn << "push to output queue \"" << m_output_queue->get_name() << "\"";
           ers::warning(
-            dunedaq::appfwk::QueueTimeoutExpired(ERS_HERE, get_name(), oss_warn.str(), m_queue_timeout.count()));
+            dunedaq::iomanager::TimeoutExpired(ERS_HERE, get_name(), oss_warn.str(), m_queue_timeout.count()));
         }
       }
     }
+    
+    tpset->seqno = sequence_number;
+    ++sequence_number;
+
     while (!successfully_sent_real_tpset) {
       try {
-        m_output_queue->push(tpset, m_queue_timeout);
+        m_output_queue->send(std::move(*tpset), m_queue_timeout);
         successfully_sent_real_tpset = true;
         m_tpset_sent_count++;
-      } catch (const dunedaq::appfwk::QueueTimeoutExpired& excpt) {
+      } catch (const dunedaq::iomanager::TimeoutExpired& excpt) {
         std::ostringstream oss_warn;
         oss_warn << "push to output queue \"" << m_output_queue->get_name() << "\"";
-        ers::warning(
-          dunedaq::appfwk::QueueTimeoutExpired(ERS_HERE, get_name(), oss_warn.str(), m_queue_timeout.count()));
+        ers::warning(dunedaq::iomanager::TimeoutExpired(ERS_HERE, get_name(), oss_warn.str(), m_queue_timeout.count()));
       }
     }
   }
@@ -176,6 +187,7 @@ FakeTPCreatorHeartbeatMaker::get_heartbeat(TPSet& tpset_heartbeat,
   tpset_heartbeat.start_time = current_tpset_start_time;
   tpset_heartbeat.end_time = current_tpset_start_time;
   tpset_heartbeat.run_number = m_run_number;
+  tpset_heartbeat.origin = m_geoid;
 }
 
 } // namespace trigger

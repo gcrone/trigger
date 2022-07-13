@@ -9,22 +9,18 @@
 #ifndef TRIGGER_PLUGINS_TIMINGTRIGGERCANDIDATEMAKER_HPP_
 #define TRIGGER_PLUGINS_TIMINGTRIGGERCANDIDATEMAKER_HPP_
 
-#include "appfwk/DAQModule.hpp"
-#include "appfwk/DAQModuleHelper.hpp"
-#include "appfwk/DAQSink.hpp"
-#include "appfwk/DAQSource.hpp"
-#include "utilities/WorkerThread.hpp"
-
 #include "trigger/Issues.hpp"
-
 #include "trigger/timingtriggercandidatemaker/Nljs.hpp"
 #include "trigger/timingtriggercandidatemakerinfo/InfoNljs.hpp"
 
+#include "appfwk/DAQModule.hpp"
+#include "daqdataformats/Types.hpp"
 #include "dfmessages/HSIEvent.hpp"
+#include "iomanager/Receiver.hpp"
+#include "iomanager/Sender.hpp"
 #include "triggeralgs/TriggerActivity.hpp"
 #include "triggeralgs/TriggerCandidate.hpp"
-
-#include "ipm/Receiver.hpp"
+#include "utilities/WorkerThread.hpp"
 
 #include <chrono>
 #include <map>
@@ -61,10 +57,11 @@ private:
   int m_hsi_pt_after;
 
   triggeralgs::TriggerCandidate HSIEventToTriggerCandidate(const dfmessages::HSIEvent& data);
-  void receive_hsievent(ipm::Receiver::Response message);
+  void receive_hsievent(dfmessages::HSIEvent& data);
 
-  using sink_t = dunedaq::appfwk::DAQSink<triggeralgs::TriggerCandidate>;
-  std::unique_ptr<sink_t> m_output_queue;
+  using sink_t = dunedaq::iomanager::SenderConcept<triggeralgs::TriggerCandidate>;
+  std::shared_ptr<sink_t> m_output_queue;
+  std::shared_ptr<iomanager::ReceiverConcept<dfmessages::HSIEvent>> m_hsievent_receiver;
 
   std::chrono::milliseconds m_queue_timeout;
 
@@ -77,6 +74,8 @@ private:
   std::atomic<metric_counter_type> m_tc_sent_count{ 0 };
   std::atomic<metric_counter_type> m_tc_sig_type_err_count{ 0 };
   std::atomic<metric_counter_type> m_tc_total_count{ 0 };
+
+  std::atomic<daqdataformats::run_number_t> m_run_number;
 };
 } // namespace trigger
 } // namespace dunedaq

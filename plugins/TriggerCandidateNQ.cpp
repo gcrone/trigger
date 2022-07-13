@@ -1,5 +1,5 @@
 /**
- * @file TASetNQ.cpp
+ * @file TPSetNQ.cpp
  *
  * This is part of the DUNE DAQ Application Framework, copyright 2020.
  * Licensing/copyright details are in the COPYING file that you should have
@@ -8,6 +8,8 @@
 
 #include "nwqueueadapters/AdapterMacros.hpp"
 
-#include "trigger/TASet.hpp"
+#include "triggeralgs/TriggerCandidate.hpp"
 
-DEFINE_DUNE_NWQUEUEADAPTERS(dunedaq::trigger::TASet)
+#include "trigger/TriggerCandidate_serialization.hpp"
+
+DEFINE_DUNE_NWQUEUEADAPTERS(triggeralgs::TriggerCandidate)

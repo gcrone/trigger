@@ -9,16 +9,14 @@
 #ifndef TRIGGER_PLUGINS_TRIGGERPRIMITIVEMAKER_HPP_
 #define TRIGGER_PLUGINS_TRIGGERPRIMITIVEMAKER_HPP_
 
-#include "triggeralgs/TriggerPrimitive.hpp"
-
-#include "appfwk/DAQModule.hpp"
-#include "appfwk/DAQSink.hpp"
-#include "appfwk/DAQSource.hpp"
-#include "utilities/WorkerThread.hpp"
-
-#include "triggeralgs/Types.hpp"
 #include "trigger/TPSet.hpp"
 #include "trigger/triggerprimitivemaker/Nljs.hpp"
+
+#include "appfwk/DAQModule.hpp"
+#include "iomanager/Sender.hpp"
+#include "triggeralgs/TriggerPrimitive.hpp"
+#include "triggeralgs/Types.hpp"
+#include "utilities/WorkerThread.hpp"
 
 #include <memory>
 #include <string>
@@ -51,10 +49,13 @@ private:
   void do_scrap(const nlohmann::json& obj);
 
   // Threading
-  void do_work(std::atomic<bool>&, std::vector<TPSet>& tpsets, std::unique_ptr<appfwk::DAQSink<TPSet>>& tpset_sink, std::chrono::steady_clock::time_point earliest_timestamp_time);
+  void do_work(std::atomic<bool>&,
+               std::vector<TPSet>& tpsets,
+               std::shared_ptr<iomanager::SenderConcept<TPSet>>& tpset_sink,
+               std::chrono::steady_clock::time_point earliest_timestamp_time);
   std::vector<std::unique_ptr<std::thread>> m_threads;
   std::atomic<bool> m_running_flag;
-  
+
   std::vector<TPSet> read_tpsets(std::string filename, int region, int element);
 
   // Configuration
@@ -64,8 +65,9 @@ private:
 
   nlohmann::json m_init_obj; // Stash this so we know name -> instance mappings
 
-  struct TPStream {
-    std::unique_ptr<appfwk::DAQSink<TPSet>> tpset_sink;
+  struct TPStream
+  {
+    std::shared_ptr<iomanager::SenderConcept<TPSet>> tpset_sink;
     std::vector<TPSet> tpsets;
   };
 

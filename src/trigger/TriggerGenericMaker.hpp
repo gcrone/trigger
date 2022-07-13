@@ -16,14 +16,13 @@
 
 #include "appfwk/DAQModule.hpp"
 #include "appfwk/DAQModuleHelper.hpp"
-#include "appfwk/DAQSink.hpp"
-#include "appfwk/DAQSource.hpp"
-#include "utilities/WorkerThread.hpp"
-
 #include "daqdataformats/GeoID.hpp"
-
-#include "logging/Logging.hpp"
 #include "detdataformats/trigger/Types.hpp"
+#include "iomanager/IOManager.hpp"
+#include "iomanager/Receiver.hpp"
+#include "iomanager/Sender.hpp"
+#include "logging/Logging.hpp"
+#include "utilities/WorkerThread.hpp"
 
 #include <algorithm>
 #include <memory>
@@ -74,8 +73,8 @@ public:
 
   void init(const nlohmann::json& obj) override
   {
-    m_input_queue.reset(new source_t(appfwk::queue_inst(obj, "input")));
-    m_output_queue.reset(new sink_t(appfwk::queue_inst(obj, "output")));
+    m_input_queue = get_iom_receiver<IN>(appfwk::connection_inst(obj, "input"));
+    m_output_queue = get_iom_sender<OUT>(appfwk::connection_inst(obj, "output"));
   }
 
 protected:
@@ -101,11 +100,11 @@ private:
   size_t m_received_count;
   size_t m_sent_count;
 
-  using source_t = dunedaq::appfwk::DAQSource<IN>;
-  std::unique_ptr<source_t> m_input_queue;
+  using source_t = dunedaq::iomanager::ReceiverConcept<IN>;
+  std::shared_ptr<source_t> m_input_queue;
 
-  using sink_t = dunedaq::appfwk::DAQSink<OUT>;
-  std::unique_ptr<sink_t> m_output_queue;
+  using sink_t = dunedaq::iomanager::SenderConcept<OUT>;
+  std::shared_ptr<sink_t> m_output_queue;
 
   std::chrono::milliseconds m_queue_timeout;
 
@@ -129,7 +128,7 @@ private:
   {
     m_received_count = 0;
     m_sent_count = 0;
-    m_thread.start_working_thread();
+    m_thread.start_working_thread(get_name());
   }
 
   void do_stop(const nlohmann::json& /*obj*/) { m_thread.stop_working_thread(); }
@@ -152,8 +151,16 @@ private:
         worker.process(in);
       }
     }
-    worker.drain();
-    TLOG() << ": Exiting do_work() method, received " << m_received_count << " inputs and successfully sent "
+    // P. Rodrigues 2022-06-01. The argument here is whether to drop
+    // buffered outputs. We choose 'true' because some significant
+    // time can pass between the last input sent by readout and when
+    // we receive a stop. (This happens because stop is sent serially
+    // to readout units before trigger, and each RU takes ~1s to
+    // stop). So by the time we receive a stop command, our buffered
+    // outputs are stale and will cause tardy warnings from the zipper
+    // downstream
+    worker.drain(true);
+    TLOG() << get_name() << ": Exiting do_work() method, received " << m_received_count << " inputs and successfully sent "
            << m_sent_count << " outputs. ";
     worker.reset();
   }
@@ -161,8 +168,8 @@ private:
   bool receive(IN& in)
   {
     try {
-      m_input_queue->pop(in, m_queue_timeout);
-    } catch (const dunedaq::appfwk::QueueTimeoutExpired& excpt) {
+      in = m_input_queue->receive(m_queue_timeout);
+    } catch (const dunedaq::iomanager::TimeoutExpired& excpt) {
       // it is perfectly reasonable that there might be no data in the queue
       // some fraction of the times that we check, so we just continue on and try again
       return false;
@@ -171,11 +178,11 @@ private:
     return true;
   }
 
-  bool send(const OUT& out)
+  bool send(OUT&& out)
   {
     try {
-      m_output_queue->push(out, m_queue_timeout);
-    } catch (const dunedaq::appfwk::QueueTimeoutExpired& excpt) {
+      m_output_queue->send(std::move(out), m_queue_timeout);
+    } catch (const dunedaq::iomanager::TimeoutExpired& excpt) {
       ers::warning(excpt);
       return false;
     }
@@ -218,7 +225,7 @@ public:
     }
 
     while (out_vec.size()) {
-      if (!m_parent.send(out_vec.back())) {
+      if (!m_parent.send(std::move(out_vec.back()))) {
         ers::error(AlgorithmFailedToSend(ERS_HERE, m_parent.get_name(), m_parent.m_algorithm_name));
         // out_vec.back() is dropped
       }
@@ -226,7 +233,7 @@ public:
     }
   }
 
-  void drain() {}
+  void drain(bool) {}
 };
 
 // Partial specialization for IN = Set<A>, OUT = Set<B> and assumes the MAKER has:
@@ -292,11 +299,12 @@ public: // NOLINT
         process_slice(time_slice, elems);
       } break;
       case Set<A>::Type::kHeartbeat: {
-        // PAR 2022-01-21 We've got a heartbeat for time T, so we know
+        // PAR 2022-04-27 We've got a heartbeat for time T, so we know
         // we won't receive any more inputs for times t < T. Therefore
         // we can flush all items in the input buffer, which have
-        // times t < T, because the input is time-ordered. We also
-        // forward the heartbeat downstream
+        // times t < T, because the input is time-ordered. We put the
+        // heartbeat in the output buffer, which will handle it
+        // appropriately
 
         std::vector<A> time_slice;
         daqdataformats::timestamp_t start_time, end_time;
@@ -307,18 +315,16 @@ public: // NOLINT
           }
           process_slice(time_slice, elems);
         }
-        
+
         Set<B> heartbeat;
-        heartbeat.seqno = m_parent.m_sent_count;
         heartbeat.type = Set<B>::Type::kHeartbeat;
         heartbeat.start_time = in.start_time;
         heartbeat.end_time = in.end_time;
         heartbeat.origin = daqdataformats::GeoID(
           daqdataformats::GeoID::SystemType::kDataSelection, m_parent.m_geoid_region_id, m_parent.m_geoid_element_id);
-        if (!m_parent.send(heartbeat)) {
-          ers::error(AlgorithmFailedToHeartbeat(ERS_HERE, m_parent.get_name(), m_parent.m_algorithm_name));
-          // heartbeat is dropped
-        }
+
+        TLOG_DEBUG(4) << "Buffering heartbeat with start time " << heartbeat.start_time;
+        m_out_buffer.buffer_heartbeat(heartbeat);
 
         // flush the maker
         try {
@@ -341,27 +347,37 @@ public: // NOLINT
       m_out_buffer.buffer(elems);
     }
 
+    size_t n_output_windows=0;
     // emit completed windows
     while (m_out_buffer.ready()) {
+      ++n_output_windows;
       Set<B> out;
-      m_out_buffer.flush(out.objects, out.start_time, out.end_time);
-      // Only form and send Set<B> if it has a nonzero number of objects
-      if (out.objects.size() != 0) {
-        out.seqno = m_parent.m_sent_count;
-        out.type = Set<B>::Type::kPayload;
-        out.origin = daqdataformats::GeoID(
+      m_out_buffer.flush(out);
+      out.seqno = m_parent.m_sent_count;
+      out.origin = daqdataformats::GeoID(
           daqdataformats::GeoID::SystemType::kDataSelection, m_parent.m_geoid_region_id, m_parent.m_geoid_element_id);
-        TLOG_DEBUG(2) << "Output set window ready with start time " << out.start_time << " end time " << out.end_time
+
+      if (out.type == Set<B>::Type::kHeartbeat) {
+        TLOG_DEBUG(4) << "Sending heartbeat with start time " << out.start_time;
+        if (!m_parent.send(std::move(out))) {
+          ers::error(AlgorithmFailedToSend(ERS_HERE, m_parent.get_name(), m_parent.m_algorithm_name));
+          // out is dropped
+        }
+      }
+      // Only form and send Set<B> if it has a nonzero number of objects
+      else if (out.type == Set<B>::Type::kPayload && out.objects.size() != 0) {
+        TLOG_DEBUG(4) << "Output set window ready with start time " << out.start_time << " end time " << out.end_time
                       << " and " << out.objects.size() << " members";
-        if (!m_parent.send(out)) {
+        if (!m_parent.send(std::move(out))) {
           ers::error(AlgorithmFailedToSend(ERS_HERE, m_parent.get_name(), m_parent.m_algorithm_name));
           // out is dropped
         }
       }
     }
+    TLOG_DEBUG(4) << "process() done. Advanced output buffer by " << n_output_windows << " output windows";
   }
 
-  void drain()
+  void drain(bool drop)
   {
     // First, send anything in the input buffer to the algorithm, and add any
     // results to output buffer
@@ -378,18 +394,28 @@ public: // NOLINT
     // formed" windows, but at this point we're getting no more data anyway.
     while (!m_out_buffer.empty()) {
       Set<B> out;
-      m_out_buffer.flush(out.objects, out.start_time, out.end_time);
-      // Only form and send Set<B> if it has a nonzero number of objects
-      if (out.objects.size() != 0) {
-        out.seqno = m_parent.m_sent_count;
-        out.type = Set<B>::Type::kPayload;
-        out.origin = daqdataformats::GeoID(
+      m_out_buffer.flush(out);
+      out.seqno = m_parent.m_sent_count;
+      out.origin = daqdataformats::GeoID(
           daqdataformats::GeoID::SystemType::kDataSelection, m_parent.m_geoid_region_id, m_parent.m_geoid_element_id);
-        TLOG_DEBUG(2) << "Output set window drained with start time " << out.start_time << " end time " << out.end_time
+
+      if (out.type == Set<B>::Type::kHeartbeat) {
+        if(!drop) {
+          if (!m_parent.send(std::move(out))) {
+            ers::error(AlgorithmFailedToSend(ERS_HERE, m_parent.get_name(), m_parent.m_algorithm_name));
+            // out is dropped
+          }
+        }
+      }
+      // Only form and send Set<B> if it has a nonzero number of objects
+      else if (out.type == Set<B>::Type::kPayload && out.objects.size() != 0) {
+        TLOG_DEBUG(1) << "Output set window ready with start time " << out.start_time << " end time " << out.end_time
                       << " and " << out.objects.size() << " members";
-        if (!m_parent.send(out)) {
-          ers::error(AlgorithmFailedToSend(ERS_HERE, m_parent.get_name(), m_parent.m_algorithm_name));
-          // out is dropped
+        if (!drop) {
+          if (!m_parent.send(std::move(out))) {
+            ers::error(AlgorithmFailedToSend(ERS_HERE, m_parent.get_name(), m_parent.m_algorithm_name));
+            // out is dropped
+          }
         }
       }
     }
@@ -472,7 +498,7 @@ public: // NOLINT
     }
 
     while (out_vec.size()) {
-      if (!m_parent.send(out_vec.back())) {
+      if (!m_parent.send(std::move(out_vec.back()))) {
         ers::error(AlgorithmFailedToSend(ERS_HERE, m_parent.get_name(), m_parent.m_algorithm_name));
         // out.back() is dropped
       }
@@ -480,7 +506,7 @@ public: // NOLINT
     }
   }
 
-  void drain()
+  void drain(bool drop)
   {
     // Send anything in the input buffer to the algorithm, and put any results
     // on the output queue
@@ -490,11 +516,13 @@ public: // NOLINT
       std::vector<OUT> out_vec;
       process_slice(time_slice, out_vec);
       while (out_vec.size()) {
-        if (!m_parent.send(out_vec.back())) {
-          ers::error(AlgorithmFailedToSend(ERS_HERE, m_parent.get_name(), m_parent.m_algorithm_name));
-          // out.back() is dropped
+        if (!drop) {
+          if (!m_parent.send(std::move(out_vec.back()))) {
+            ers::error(AlgorithmFailedToSend(ERS_HERE, m_parent.get_name(), m_parent.m_algorithm_name));
+            // out.back() is dropped
+          }
+          out_vec.pop_back();
         }
-        out_vec.pop_back();
       }
     }
   }

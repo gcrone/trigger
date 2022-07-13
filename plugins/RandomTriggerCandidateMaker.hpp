@@ -8,23 +8,20 @@
 #define TRIGGER_PLUGINS_RANDOMTRIGGERCANDIDATEMAKER_HPP_
 
 #include "trigger/TokenManager.hpp"
-
 #include "trigger/randomtriggercandidatemaker/Nljs.hpp"
 #include "trigger/randomtriggercandidatemakerinfo/InfoNljs.hpp"
 
-#include "timinglibs/TimestampEstimator.hpp"
-#include "triggeralgs/TriggerCandidate.hpp"
-
+#include "appfwk/DAQModule.hpp"
 #include "daqdataformats/GeoID.hpp"
 #include "dfmessages/TimeSync.hpp"
 #include "dfmessages/TriggerDecision.hpp"
 #include "dfmessages/TriggerDecisionToken.hpp"
 #include "dfmessages/TriggerInhibit.hpp"
 #include "dfmessages/Types.hpp"
-
-#include "appfwk/DAQModule.hpp"
-#include "appfwk/DAQSink.hpp"
-#include "appfwk/DAQSource.hpp"
+#include "iomanager/Receiver.hpp"
+#include "iomanager/Sender.hpp"
+#include "timinglibs/TimestampEstimator.hpp"
+#include "triggeralgs/TriggerCandidate.hpp"
 
 #include <memory>
 #include <random>
@@ -78,8 +75,8 @@ private:
   triggeralgs::TriggerCandidate create_candidate(dfmessages::timestamp_t timestamp);
 
   // Queue sources and sinks
-  std::unique_ptr<appfwk::DAQSource<dfmessages::TimeSync>> m_time_sync_source;
-  std::unique_ptr<appfwk::DAQSink<triggeralgs::TriggerCandidate>> m_trigger_candidate_sink;
+  std::shared_ptr<iomanager::ReceiverConcept<dfmessages::TimeSync>> m_time_sync_source;
+  std::shared_ptr<iomanager::SenderConcept<triggeralgs::TriggerCandidate>> m_trigger_candidate_sink;
 
   randomtriggercandidatemaker::ConfParams m_conf;
 

@@ -7,11 +7,14 @@
  */
 
 #include "TimingTriggerCandidateMaker.hpp"
-#include "detdataformats/trigger/Types.hpp"
-#include "networkmanager/NetworkManager.hpp"
 
-#include <string>
+#include "appfwk/DAQModuleHelper.hpp"
+#include "detdataformats/trigger/Types.hpp"
+#include "iomanager/IOManager.hpp"
+#include "rcif/cmd/Nljs.hpp"
+
 #include <regex>
+#include <string>
 
 namespace dunedaq {
 namespace trigger {
@@ -32,11 +35,12 @@ triggeralgs::TriggerCandidate
 TimingTriggerCandidateMaker::HSIEventToTriggerCandidate(const dfmessages::HSIEvent& data)
 {
   triggeralgs::TriggerCandidate candidate;
-  // TODO Trigger Team <dune-daq@github.com> Nov-18-2021: the signal field ia now a signal bit map, rather than unique value -> change logic of below?
-  if (m_hsi_passthrough == true){
+  // TODO Trigger Team <dune-daq@github.com> Nov-18-2021: the signal field ia now a signal bit map, rather than unique
+  // value -> change logic of below?
+  if (m_hsi_passthrough == true) {
     TLOG_DEBUG(3) << "HSI passthrough applied, modified readout window is set";
     candidate.time_start = data.timestamp - m_hsi_pt_before;
-    candidate.time_end   = data.timestamp + m_hsi_pt_after;
+    candidate.time_end = data.timestamp + m_hsi_pt_after;
   } else {
     if (m_detid_offsets_map.count(data.signal_map)) {
       // clang-format off
@@ -77,33 +81,34 @@ void
 TimingTriggerCandidateMaker::init(const nlohmann::json& iniobj)
 {
   try {
-    m_output_queue.reset(new sink_t(appfwk::queue_inst(iniobj, "output")));
+    m_output_queue = get_iom_sender<triggeralgs::TriggerCandidate>(appfwk::connection_inst(iniobj, "output"));
   } catch (const ers::Issue& excpt) {
     throw dunedaq::trigger::InvalidQueueFatalError(ERS_HERE, get_name(), "input/output", excpt);
   }
 }
 
 void
-TimingTriggerCandidateMaker::do_start(const nlohmann::json&)
+TimingTriggerCandidateMaker::do_start(const nlohmann::json& startobj)
 {
   // OpMon.
   m_tsd_received_count.store(0);
   m_tc_sent_count.store(0);
   m_tc_sig_type_err_count.store(0);
   m_tc_total_count.store(0);
-  
-  networkmanager::NetworkManager::get().start_listening(m_hsievent_receive_connection);
-  networkmanager::NetworkManager::get().register_callback(
-    m_hsievent_receive_connection, std::bind(&TimingTriggerCandidateMaker::receive_hsievent, this, std::placeholders::_1));
 
+  auto start_params = startobj.get<rcif::cmd::StartParams>();
+  m_run_number.store(start_params.run);
+
+  m_hsievent_receiver = get_iom_receiver<dfmessages::HSIEvent>(m_hsievent_receive_connection);
+  m_hsievent_receiver->add_callback(std::bind(&TimingTriggerCandidateMaker::receive_hsievent, this, std::placeholders::_1));
+  
   TLOG_DEBUG(2) << get_name() + " successfully started.";
 }
 
 void
 TimingTriggerCandidateMaker::do_stop(const nlohmann::json&)
 {
-  networkmanager::NetworkManager::get().clear_callback(m_hsievent_receive_connection);
-  networkmanager::NetworkManager::get().stop_listening(m_hsievent_receive_connection);
+  m_hsievent_receiver->remove_callback();
 
   TLOG() << "Received " << m_tsd_received_count << " HSIEvent messages. Successfully sent " << m_tc_sent_count
          << " TriggerCandidates";
@@ -111,11 +116,17 @@ TimingTriggerCandidateMaker::do_stop(const nlohmann::json&)
 }
 
 void
-TimingTriggerCandidateMaker::receive_hsievent(ipm::Receiver::Response message)
+TimingTriggerCandidateMaker::receive_hsievent(dfmessages::HSIEvent& data)
 {
-  TLOG_DEBUG(3) << "Activity received.";
-  
-  auto data = serialization::deserialize<dfmessages::HSIEvent>(message.data);
+  TLOG_DEBUG(3) << "Activity received with timestamp " << data.timestamp << ", sequence_counter " << data.sequence_counter
+                << ", and run_number " << data.run_number;
+
+  if (data.run_number != m_run_number) {
+    ers::error(dunedaq::trigger::InvalidHSIEventRunNumber(ERS_HERE, get_name(), data.run_number, m_run_number,
+                                                          data.timestamp, data.sequence_counter));
+    return;
+  }
+
   ++m_tsd_received_count;
   
   if (m_hsi_passthrough == true){
@@ -142,14 +153,15 @@ TimingTriggerCandidateMaker::receive_hsievent(ipm::Receiver::Response message)
   bool successfullyWasSent = false;
   while (!successfullyWasSent) {
     try {
-      m_output_queue->push(candidate, m_queue_timeout);
+        triggeralgs::TriggerCandidate candidate_copy(candidate);
+      m_output_queue->send(std::move(candidate_copy), m_queue_timeout);
       successfullyWasSent = true;
       ++m_tc_sent_count;
-    } catch (const dunedaq::appfwk::QueueTimeoutExpired& excpt) {
+    } catch (const dunedaq::iomanager::TimeoutExpired& excpt) {
       std::ostringstream oss_warn;
       oss_warn << "push to output queue \"" << m_output_queue->get_name() << "\"";
       ers::warning(
-        dunedaq::appfwk::QueueTimeoutExpired(ERS_HERE, get_name(), oss_warn.str(), m_queue_timeout.count()));
+        dunedaq::iomanager::TimeoutExpired(ERS_HERE, get_name(), oss_warn.str(), m_queue_timeout.count()));
     }
   }
   m_tc_total_count++;

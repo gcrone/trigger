@@ -8,10 +8,10 @@
 
 #include "TPSetSink.hpp"
 
-#include "logging/Logging.hpp"
-
 #include "appfwk/DAQModuleHelper.hpp"
 #include "appfwk/app/Nljs.hpp"
+#include "iomanager/IOManager.hpp"
+#include "logging/Logging.hpp"
 #include "triggeralgs/Types.hpp"
 
 #include <chrono>
@@ -31,7 +31,7 @@ TPSetSink::TPSetSink(const std::string& name)
 void
 TPSetSink::init(const nlohmann::json& obj)
 {
-  m_tpset_source.reset(new source_t(appfwk::queue_inst(obj, "tpset_source")));
+  m_tpset_source = get_iom_receiver<TPSet>(appfwk::connection_inst(obj, "tpset_source"));
 }
 
 void
@@ -66,9 +66,9 @@ TPSetSink::do_work()
   while (true) {
     TPSet tpset;
     try {
-      m_tpset_source->pop(tpset, std::chrono::milliseconds(100));
+      tpset = m_tpset_source->receive(std::chrono::milliseconds(100));
       ++n_tpset_received;
-    } catch (appfwk::QueueTimeoutExpired&) {
+    } catch (iomanager::TimeoutExpired&) {
       // The condition to exit the loop is that we've been stopped and
       // there's nothing left on the input queue
       if (!m_running_flag.load()) {

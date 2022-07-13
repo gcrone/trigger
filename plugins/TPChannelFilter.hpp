@@ -9,24 +9,22 @@
 #ifndef TRIGGER_PLUGINS_TPCHANNELFILTER_HPP_
 #define TRIGGER_PLUGINS_TPCHANNELFILTER_HPP_
 
-#include "appfwk/DAQModule.hpp"
-#include "appfwk/DAQModuleHelper.hpp"
-#include "appfwk/DAQSink.hpp"
-#include "appfwk/DAQSource.hpp"
-#include "utilities/WorkerThread.hpp"
-
-#include "detchannelmaps/TPCChannelMap.hpp"
 #include "trigger/Issues.hpp"
 #include "trigger/TPSet.hpp"
-
 #include "trigger/tpchannelfilter/Nljs.hpp"
+
+#include "appfwk/DAQModule.hpp"
+#include "detchannelmaps/TPCChannelMap.hpp"
+#include "iomanager/Receiver.hpp"
+#include "iomanager/Sender.hpp"
+#include "utilities/WorkerThread.hpp"
 
 #include <chrono>
 #include <map>
 #include <memory>
 #include <string>
-#include <utility>
 #include <unordered_set>
+#include <utility>
 
 namespace dunedaq {
 namespace trigger {
@@ -53,10 +51,10 @@ private:
   bool channel_should_be_removed(int channel) const;
   dunedaq::utilities::WorkerThread m_thread;
 
-  using source_t = dunedaq::appfwk::DAQSource<TPSet>;
-  std::unique_ptr<source_t> m_input_queue;
-  using sink_t = dunedaq::appfwk::DAQSink<TPSet>;
-  std::unique_ptr<sink_t> m_output_queue;
+  using source_t = dunedaq::iomanager::ReceiverConcept<TPSet>;
+  std::shared_ptr<source_t> m_input_queue;
+  using sink_t = dunedaq::iomanager::SenderConcept<TPSet>;
+  std::shared_ptr<sink_t> m_output_queue;
   std::chrono::milliseconds m_queue_timeout;
 
   std::shared_ptr<detchannelmaps::TPCChannelMap> m_channel_map;

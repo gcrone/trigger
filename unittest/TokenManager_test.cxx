@@ -6,14 +6,11 @@
  * received with this code.
  */
 
-#include "appfwk/DAQSink.hpp"
-#include "appfwk/DAQSource.hpp"
-
-#include "networkmanager/NetworkManager.hpp"
-#include "networkmanager/nwmgr/Structs.hpp"
-
-#include "trigger/TokenManager.hpp"
 #include "trigger/LivetimeCounter.hpp"
+#include "trigger/TokenManager.hpp"
+
+#include "iomanager/IOManager.hpp"
+#include "logging/Logging.hpp"
 
 /**
  * @brief Name of this test module
@@ -32,29 +29,36 @@ using namespace dunedaq;
 BOOST_AUTO_TEST_SUITE(BOOST_TEST_MODULE)
 
 /**
- * @brief Initializes the NetworkManager
+ * @brief Initializes the IOManager
  */
-struct NetworkManagerTestFixture
+struct IOManagerTestFixture
 {
-  NetworkManagerTestFixture()
+  IOManagerTestFixture()
   {
-    networkmanager::nwmgr::Connections testConfig;
-    networkmanager::nwmgr::Connection testConn;
-    testConn.name = "foo";
-    testConn.address = "inproc://foo";
-    testConn.topics = {};
-    testConfig.push_back(testConn);
-    networkmanager::NetworkManager::get().configure(testConfig);
+    dunedaq::iomanager::ConnectionIds_t connections;
+    dunedaq::iomanager::ConnectionId cid;
+    cid.service_type = dunedaq::iomanager::ServiceType::kNetReceiver;
+    cid.uid = "foo";
+    cid.uri = "inproc://foo";
+    cid.data_type = "dfmessages::TriggerDecisionToken";
+    connections.push_back(cid);
+    cid.service_type = dunedaq::iomanager::ServiceType::kNetSender;
+    cid.uid = "foo_s";
+    connections.push_back(cid);
+    get_iomanager()->configure(connections);
   }
-  ~NetworkManagerTestFixture() { networkmanager::NetworkManager::get().reset(); }
+  ~IOManagerTestFixture()
+  {
+    get_iomanager()->reset();
+  }
 
-  NetworkManagerTestFixture(NetworkManagerTestFixture const&) = default;
-  NetworkManagerTestFixture(NetworkManagerTestFixture&&) = default;
-  NetworkManagerTestFixture& operator=(NetworkManagerTestFixture const&) = default;
-  NetworkManagerTestFixture& operator=(NetworkManagerTestFixture&&) = default;
+  IOManagerTestFixture(IOManagerTestFixture const&) = default;
+  IOManagerTestFixture(IOManagerTestFixture&&) = default;
+  IOManagerTestFixture& operator=(IOManagerTestFixture const&) = default;
+  IOManagerTestFixture& operator=(IOManagerTestFixture&&) = default;
 };
 
-BOOST_TEST_GLOBAL_FIXTURE(NetworkManagerTestFixture);
+BOOST_TEST_GLOBAL_FIXTURE(IOManagerTestFixture);
 
 BOOST_AUTO_TEST_CASE(Basics)
 {
@@ -62,7 +66,7 @@ BOOST_AUTO_TEST_CASE(Basics)
 
   int initial_tokens = 10;
   daqdataformats::run_number_t run_number = 1;
-  auto livetime_counter=std::make_shared<trigger::LivetimeCounter>(trigger::LivetimeCounter::State::kPaused);
+  auto livetime_counter = std::make_shared<trigger::LivetimeCounter>(trigger::LivetimeCounter::State::kPaused);
   trigger::TokenManager tm("foo", initial_tokens, run_number, livetime_counter);
 
   BOOST_CHECK_EQUAL(tm.get_n_tokens(), initial_tokens);
@@ -82,9 +86,7 @@ BOOST_AUTO_TEST_CASE(Basics)
   dfmessages::TriggerDecisionToken token;
   token.run_number = run_number;
   token.trigger_number = 1;
-  auto serialised_token = dunedaq::serialization::serialize(token, dunedaq::serialization::kMsgPack);
-  networkmanager::NetworkManager::get().send_to(
-    "foo", static_cast<const void*>(serialised_token.data()), serialised_token.size(), std::chrono::milliseconds(10));
+  get_iom_sender<dfmessages::TriggerDecisionToken>("foo_s")->send(std::move(token), std::chrono::milliseconds(10));
 
   // Give TokenManager a little time to pop the token off the queue
   std::this_thread::sleep_for(100ms);

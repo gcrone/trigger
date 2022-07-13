@@ -9,17 +9,19 @@
 #ifndef TRIGGER_PLUGINS_TRIGGERZIPPER_HPP_
 #define TRIGGER_PLUGINS_TRIGGERZIPPER_HPP_
 
+#include "zipper.hpp"
+
 #include "trigger/Issues.hpp"
 #include "trigger/triggerzipper/Nljs.hpp"
-#include "zipper.hpp"
 
 #include "appfwk/DAQModule.hpp"
 #include "appfwk/DAQModuleHelper.hpp"
-#include "appfwk/DAQSink.hpp"
-#include "appfwk/DAQSource.hpp"
-#include "utilities/WorkerThread.hpp"
 #include "daqdataformats/GeoID.hpp"
-#include <logging/Logging.hpp>
+#include "iomanager/IOManager.hpp"
+#include "iomanager/Receiver.hpp"
+#include "iomanager/Sender.hpp"
+#include "logging/Logging.hpp"
+#include "utilities/WorkerThread.hpp"
 
 #include <chrono>
 #include <list>
@@ -68,10 +70,10 @@ public:
   zm_type m_zm;
 
   // queues
-  using source_t = appfwk::DAQSource<TSET>;
-  using sink_t = appfwk::DAQSink<TSET>;
-  std::unique_ptr<source_t> m_inq{};
-  std::unique_ptr<sink_t> m_outq{};
+  using source_t = iomanager::ReceiverConcept<TSET>;
+  using sink_t = iomanager::SenderConcept<TSET>;
+  std::shared_ptr<source_t> m_inq{};
+  std::shared_ptr<sink_t> m_outq{};
 
   using cfg_t = triggerzipper::ConfParams;
   cfg_t m_cfg;
@@ -103,11 +105,17 @@ public:
 
   void init(const nlohmann::json& ini)
   {
-    set_input(appfwk::queue_inst(ini, "input"));
-    set_output(appfwk::queue_inst(ini, "output"));
+    set_input(appfwk::connection_inst(ini, "input").uid);
+    set_output(appfwk::connection_inst(ini, "output").uid);
   }
-  void set_input(const std::string& name) { m_inq.reset(new source_t(name)); }
-  void set_output(const std::string& name) { m_outq.reset(new sink_t(name)); }
+  void set_input(const std::string& name)
+  {
+    m_inq = get_iom_receiver<TSET>(name);
+  }
+  void set_output(const std::string& name)
+  {
+    m_outq = get_iom_sender<TSET>(name);
+  }
 
   void do_configure(const nlohmann::json& cfgobj)
   {
@@ -163,10 +171,12 @@ public:
   {
     m_cache.emplace_front(); // to be filled
     auto& tset = m_cache.front();
-    try {
-      m_inq->pop(tset, std::chrono::milliseconds(10));
+    std::optional<TSET> opt_tset= m_inq->try_receive(std::chrono::milliseconds(10));
+    if (opt_tset.has_value()) {
+      tset = *opt_tset;
       ++m_n_received;
-    } catch (appfwk::QueueTimeoutExpired&) {
+    }
+    else {
       m_cache.pop_front(); // vestigial
       drain();
       return false;
@@ -174,7 +184,6 @@ public:
 
     if (!m_tardy_counts.count(tset.origin))
       m_tardy_counts[tset.origin] = 0;
-
 
     // P. Rodrigues 2022-03-03 This is a bit of a hack to ensure that
     // heartbeat TSETs with the same start_time as payload TSETs will
@@ -197,8 +206,9 @@ public:
     // up to the end_time, 200, but the heartbeat only says we've seen
     // up to timestamp 100
     ordering_type sort_value = tset.start_time << 1;
-    if(tset.type != TSET::Type::kHeartbeat) sort_value |= 0x1;
-    
+    if (tset.type != TSET::Type::kHeartbeat)
+      sort_value |= 0x1;
+
     bool accepted = m_zm.feed(m_cache.begin(), sort_value, zipper_stream_id(tset.origin));
 
     if (!accepted) {
@@ -206,7 +216,7 @@ public:
       ++m_tardy_counts[tset.origin];
 
       ers::warning(TardyInputSet(
-        ERS_HERE, get_name(), tset.origin.region_id, tset.origin.element_id, tset.start_time, m_zm.get_origin()));
+                                 ERS_HERE, get_name(), tset.origin.region_id, tset.origin.element_id, tset.start_time, m_zm.get_origin() >> 1));
       m_cache.pop_front(); // vestigial
     }
     drain();
@@ -226,9 +236,9 @@ public:
       ++m_next_seqno;
 
       try {
-        m_outq->push(tset, std::chrono::milliseconds(10));
+        m_outq->send(std::move(tset), std::chrono::milliseconds(10));
         ++m_n_sent;
-      } catch (const dunedaq::appfwk::QueueTimeoutExpired& err) {
+      } catch (const iomanager::TimeoutExpired& err) {
         // our output queue is stuffed.  should more be done
         // here than simply complain and drop?
         ers::error(err);

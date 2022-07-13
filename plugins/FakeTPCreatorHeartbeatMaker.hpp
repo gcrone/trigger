@@ -9,17 +9,15 @@
 #ifndef TRIGGER_PLUGINS_FAKETPCREATORHEARTBEATMAKER_HPP_
 #define TRIGGER_PLUGINS_FAKETPCREATORHEARTBEATMAKER_HPP_
 
-#include "appfwk/DAQModule.hpp"
-#include "appfwk/DAQModuleHelper.hpp"
-#include "appfwk/DAQSink.hpp"
-#include "appfwk/DAQSource.hpp"
-#include "utilities/WorkerThread.hpp"
-
 #include "trigger/Issues.hpp"
 #include "trigger/TPSet.hpp"
-
 #include "trigger/faketpcreatorheartbeatmaker/Nljs.hpp"
 #include "trigger/faketpcreatorheartbeatmakerinfo/InfoNljs.hpp"
+
+#include "appfwk/DAQModule.hpp"
+#include "iomanager/Receiver.hpp"
+#include "iomanager/Sender.hpp"
+#include "utilities/WorkerThread.hpp"
 
 #include <chrono>
 #include <map>
@@ -56,17 +54,21 @@ private:
 
   dunedaq::utilities::WorkerThread m_thread;
 
-  using source_t = dunedaq::appfwk::DAQSource<TPSet>;
-  std::unique_ptr<source_t> m_input_queue;
-  using sink_t = dunedaq::appfwk::DAQSink<TPSet>;
-  std::unique_ptr<sink_t> m_output_queue;
+  using source_t = dunedaq::iomanager::ReceiverConcept<TPSet>;
+  std::shared_ptr<source_t> m_input_queue;
+  using sink_t = dunedaq::iomanager::SenderConcept<TPSet>;
+  std::shared_ptr<sink_t> m_output_queue;
 
   std::chrono::milliseconds m_queue_timeout;
 
   triggeralgs::timestamp_t m_heartbeat_interval;
 
   daqdataformats::run_number_t m_run_number{ daqdataformats::TypeDefaults::s_invalid_run_number };
-  
+
+  daqdataformats::GeoID m_geoid{
+    daqdataformats::GeoID::SystemType::kDataSelection,
+    daqdataformats::GeoID::s_invalid_region_id,
+    daqdataformats::GeoID::s_invalid_element_id };
   // Opmon variables
   using metric_counter_type = decltype(faketpcreatorheartbeatmakerinfo::Info::tpset_received_count);
   std::atomic<metric_counter_type> m_tpset_received_count{ 0 };

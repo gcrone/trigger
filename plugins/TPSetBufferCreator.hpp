@@ -19,8 +19,8 @@
 #include "trigger/tpsetbuffercreator/Structs.hpp"
 
 #include "appfwk/DAQModule.hpp"
-#include "appfwk/DAQSink.hpp"
-#include "appfwk/DAQSource.hpp"
+#include "iomanager/Receiver.hpp"
+#include "iomanager/Sender.hpp"
 #include "utilities/WorkerThread.hpp"
 
 #include <ers/Issue.hpp>
@@ -71,14 +71,14 @@ private:
 
   std::chrono::milliseconds m_queueTimeout;
 
-  using tps_source_t = dunedaq::appfwk::DAQSource<trigger::TPSet>;
-  std::unique_ptr<tps_source_t> m_input_queue_tps;
+  using tps_source_t = dunedaq::iomanager::ReceiverConcept<trigger::TPSet>;
+  std::shared_ptr<tps_source_t> m_input_queue_tps;
 
-  using dr_source_t = dunedaq::appfwk::DAQSource<dfmessages::DataRequest>;
-  std::unique_ptr<dr_source_t> m_input_queue_dr;
+  using dr_source_t = dunedaq::iomanager::ReceiverConcept<dfmessages::DataRequest>;
+  std::shared_ptr<dr_source_t> m_input_queue_dr;
 
-  using fragment_sink_t = dunedaq::appfwk::DAQSink<std::pair<std::unique_ptr<daqdataformats::Fragment>, std::string>>;
-  std::unique_ptr<fragment_sink_t> m_output_queue_frag;
+  using fragment_sink_t = dunedaq::iomanager::SenderConcept<std::pair<std::unique_ptr<daqdataformats::Fragment>, std::string>>;
+  std::shared_ptr<fragment_sink_t> m_output_queue_frag;
 
   std::unique_ptr<trigger::TPSetBuffer> m_tps_buffer;
 
