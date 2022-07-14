@@ -109,8 +109,10 @@ ModuleLevelTrigger::do_configure(const nlohmann::json& confobj)
   m_readout_window_map[static_cast<detdataformats::trigger::TriggerCandidateData::Type>(params.c7.candidate_type)] = { params.c7.time_before, params.c7.time_after };
   m_buffer_timeout = params.buffer_timeout;
   m_send_timed_out_tds = params.td_out_of_timeout;
+  m_td_readout_limit = params.td_readout_limit;
   TLOG_DEBUG(3) << "Buffer timeout: " << m_buffer_timeout;
   TLOG_DEBUG(3) << "Should send timed out TDs: " << m_send_timed_out_tds;
+  TLOG_DEBUG(3) << "TD readout limit: " << m_td_readout_limit;
 }
 
 void
@@ -415,6 +417,9 @@ ModuleLevelTrigger::get_ready_tds(std::vector <PendingTD>& m_pending_tds) {
     if ( m_timestamp_now >= it->walltime_expiration ) {
       m_return_tds.push_back(*it);
       it = m_pending_tds.erase(it);
+    } else if (check_td_readout_length(*it) == true) { // Also pass on TDs with (too) long readout window
+      m_return_tds.push_back(*it);
+      it = m_pending_tds.erase(it);
     } else {
       ++it;
     }
@@ -438,6 +443,17 @@ ModuleLevelTrigger::get_earliest_tc_index(const PendingTD& m_pending_td) {
     }
   }
   return earliest_tc_index;
+}
+
+bool
+ModuleLevelTrigger::check_td_readout_length(const PendingTD& m_pending_td) {
+  bool td_too_long = false;
+  if ( (m_pending_td.readout_end - m_pending_td.readout_start) >= m_td_readout_limit ) {
+    td_too_long = true;
+    TLOG_DEBUG(3) << "Too long readout window: " << (m_pending_td.readout_end - m_pending_td.readout_start)
+    << ", sending immediate TD!";
+  }
+  return td_too_long;
 }
 
 void

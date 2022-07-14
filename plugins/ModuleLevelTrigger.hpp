@@ -123,9 +123,11 @@ private:
   void call_tc_decision(const PendingTD& m_pending_td, bool override_flag=false);
   bool check_overlap(const triggeralgs::TriggerCandidate& tc, const PendingTD& m_pending_td);
   bool check_overlap_td(const PendingTD& m_pending_td);
+  bool check_td_readout_length(const PendingTD&);
   std::vector <PendingTD> get_ready_tds(std::vector <PendingTD>& pending_tds);
   std::map<detdataformats::trigger::TriggerCandidateData::Type, std::pair<triggeralgs::timestamp_t, triggeralgs::timestamp_t>> m_readout_window_map;
   int64_t m_buffer_timeout;
+  int64_t m_td_readout_limit;
   std::atomic<bool> m_send_timed_out_tds;
   int64_t m_timestamp_now;
   int m_earliest_tc_index;

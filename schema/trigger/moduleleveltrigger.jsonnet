@@ -41,6 +41,7 @@ local types = {
       s.field("hsi_trigger_type_passthrough", self.hsi_tt_pt, doc="Option to override the trigger type inside MLT"),
       s.field("td_out_of_timeout", self.td_out_of_timeout_b, doc="Option to drop TD if TC comes out of timeout window"),
       s.field("buffer_timeout", self.time_t, 100, doc="Buffering timeout [ms] for new TCs"),
+      s.field("td_readout_limit", self.time_t, 1000, doc="Time limit [ms] for the length of TD readout window"),
       s.field("c0",
         self.map_t,
 	{
