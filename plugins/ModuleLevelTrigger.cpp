@@ -99,14 +99,6 @@ ModuleLevelTrigger::do_configure(const nlohmann::json& confobj)
 
   m_configured_flag.store(true);
 
-  m_readout_window_map[static_cast<detdataformats::trigger::TriggerCandidateData::Type>(params.c0.candidate_type)] = { params.c0.time_before, params.c0.time_after };
-  m_readout_window_map[static_cast<detdataformats::trigger::TriggerCandidateData::Type>(params.c1.candidate_type)] = { params.c1.time_before, params.c1.time_after };
-  m_readout_window_map[static_cast<detdataformats::trigger::TriggerCandidateData::Type>(params.c2.candidate_type)] = { params.c2.time_before, params.c2.time_after };
-  m_readout_window_map[static_cast<detdataformats::trigger::TriggerCandidateData::Type>(params.c3.candidate_type)] = { params.c3.time_before, params.c3.time_after };
-  m_readout_window_map[static_cast<detdataformats::trigger::TriggerCandidateData::Type>(params.c4.candidate_type)] = { params.c4.time_before, params.c4.time_after };
-  m_readout_window_map[static_cast<detdataformats::trigger::TriggerCandidateData::Type>(params.c5.candidate_type)] = { params.c5.time_before, params.c5.time_after };
-  m_readout_window_map[static_cast<detdataformats::trigger::TriggerCandidateData::Type>(params.c6.candidate_type)] = { params.c6.time_before, params.c6.time_after };
-  m_readout_window_map[static_cast<detdataformats::trigger::TriggerCandidateData::Type>(params.c7.candidate_type)] = { params.c7.time_before, params.c7.time_after };
   m_buffer_timeout = params.buffer_timeout;
   m_send_timed_out_tds = params.td_out_of_timeout;
   m_td_readout_limit = params.td_readout_limit;
@@ -272,6 +264,7 @@ ModuleLevelTrigger::send_trigger_decisions()
     if (m_ready_tds.size() > 0) {
       for (std::vector<PendingTD>::iterator it = m_ready_tds.begin(); it != m_ready_tds.end(); ) {
         if (check_overlap_td( *it )) {
+          m_earliest_tc_index = get_earliest_tc_index( *it );
           ers::error(TCOutOfTimeout(ERS_HERE, get_name(), it->contributing_tcs[m_earliest_tc_index].time_candidate));
           if (!m_send_timed_out_tds) { // if this is not set, drop the td
             ++m_td_dropped_count;
@@ -359,8 +352,8 @@ ModuleLevelTrigger::add_tc(const triggeralgs::TriggerCandidate& tc) {
      if (check_overlap(tc, *it)) {
        TLOG_DEBUG(3) << "These overlap!";
        it->contributing_tcs.push_back(tc);
-       it->readout_start = ( (tc.time_candidate - m_readout_window_map[tc.type].first) >= it->readout_start) ? it->readout_start : (tc.time_candidate - m_readout_window_map[tc.type].first);
-       it->readout_end = ( (tc.time_candidate + m_readout_window_map[tc.type].second) >= it->readout_end) ? (tc.time_candidate + m_readout_window_map[tc.type].second) : it->readout_end;
+       it->readout_start = ( (tc.time_candidate - tc.time_start) >= it->readout_start) ? it->readout_start : (tc.time_candidate - tc.time_start);
+       it->readout_end = ( (tc.time_candidate + tc.time_end) >= it->readout_end) ? (tc.time_candidate + tc.time_end) : it->readout_end;
        it->walltime_expiration = tc_wallclock_arrived + m_buffer_timeout;
        added_to_existing = true;
        break;
@@ -371,8 +364,8 @@ ModuleLevelTrigger::add_tc(const triggeralgs::TriggerCandidate& tc) {
   if (!added_to_existing) {
     PendingTD td_candidate;
     td_candidate.contributing_tcs.push_back(tc);
-    td_candidate.readout_start = tc.time_candidate - m_readout_window_map[tc.type].first;
-    td_candidate.readout_end = tc.time_candidate + m_readout_window_map[tc.type].second;
+    td_candidate.readout_start = tc.time_candidate - tc.time_start;
+    td_candidate.readout_end = tc.time_candidate + tc.time_end;
     td_candidate.walltime_expiration = tc_wallclock_arrived + m_buffer_timeout;
     m_pending_tds.push_back(td_candidate);
   }
@@ -383,8 +376,8 @@ bool
 ModuleLevelTrigger::check_overlap(const triggeralgs::TriggerCandidate& tc, const PendingTD& m_pending_td) {
   bool overlap;
  
-  if ( ((tc.time_candidate + m_readout_window_map[tc.type].second) < m_pending_td.readout_start) 
-       || ((tc.time_candidate - m_readout_window_map[tc.type].first) > m_pending_td.readout_end) ) { overlap = false; }
+  if ( ((tc.time_candidate + tc.time_end) < m_pending_td.readout_start) 
+       || ((tc.time_candidate - tc.time_start) > m_pending_td.readout_end) ) { overlap = false; }
   else { overlap = true; }
   
   return overlap;
@@ -464,9 +457,11 @@ ModuleLevelTrigger::check_td_readout_length(const PendingTD& m_pending_td) {
 
 void
 ModuleLevelTrigger::clear_td_vectors() {
+  TLOG_DEBUG(3) << "Starting cleanup";
   m_pending_tds.clear();
   m_ready_tds.clear();
   m_sent_tds.clear();
+  TLOG_DEBUG(3) << "Ending cleanup";
 }
 
 void

@@ -127,7 +127,6 @@ private:
   bool check_td_readout_length(const PendingTD&);
   void clear_td_vectors();
   std::vector <PendingTD> get_ready_tds(std::vector <PendingTD>& pending_tds);
-  std::map<detdataformats::trigger::TriggerCandidateData::Type, std::pair<triggeralgs::timestamp_t, triggeralgs::timestamp_t>> m_readout_window_map;
   int64_t m_buffer_timeout;
   int64_t m_td_readout_limit;
   std::atomic<bool> m_send_timed_out_tds;
