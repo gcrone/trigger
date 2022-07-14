@@ -133,7 +133,7 @@ ModuleLevelTrigger::do_pause(const nlohmann::json& /*pauseobj*/)
 {
   m_paused.store(true);
   m_livetime_counter->set_state(LivetimeCounter::State::kPaused);
-  TLOG() << "******* Triggers PAUSED! *********";
+  TLOG() << "******* Triggers PAUSED! in run " << m_run_number << " *********";
   ers::info(TriggerPaused(ERS_HERE));
 }
 
@@ -141,7 +141,7 @@ void
 ModuleLevelTrigger::do_resume(const nlohmann::json& /*resumeobj*/)
 {
   ers::info(TriggerActive(ERS_HERE));
-  TLOG() << "******* Triggers RESUMED! *********";
+  TLOG() << "******* Triggers RESUMED! in run " << m_run_number << " *********";
   m_livetime_counter->set_state(LivetimeCounter::State::kLive);
   m_paused.store(false);
 }
@@ -270,7 +270,9 @@ ModuleLevelTrigger::send_trigger_decisions()
 void
 ModuleLevelTrigger::dfo_busy_callback(dfmessages::TriggerInhibit& inhibit)
 {
+  TLOG_DEBUG(17) << "Received inhibit message with busy status " << inhibit.busy << " and run number " << inhibit.run_number;
   if (inhibit.run_number == m_run_number) {
+    TLOG_DEBUG(18) << "Changing our flag for the DFO busy state from " << m_dfo_is_busy.load() << " to " << inhibit.busy;
     m_dfo_is_busy = inhibit.busy;
     m_livetime_counter->set_state(LivetimeCounter::State::kDead);
   }
