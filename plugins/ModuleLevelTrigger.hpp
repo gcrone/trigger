@@ -117,6 +117,7 @@ private:
     int64_t walltime_expiration;
   };
   std::vector <PendingTD> m_pending_tds;
+  std::vector <PendingTD> m_ready_tds;
   std::vector <PendingTD> m_sent_tds;
   void add_tc(const triggeralgs::TriggerCandidate& tc);
   void add_td(const PendingTD& m_pending_td);
@@ -124,6 +125,7 @@ private:
   bool check_overlap(const triggeralgs::TriggerCandidate& tc, const PendingTD& m_pending_td);
   bool check_overlap_td(const PendingTD& m_pending_td);
   bool check_td_readout_length(const PendingTD&);
+  void clear_td_vectors();
   std::vector <PendingTD> get_ready_tds(std::vector <PendingTD>& pending_tds);
   std::map<detdataformats::trigger::TriggerCandidateData::Type, std::pair<triggeralgs::timestamp_t, triggeralgs::timestamp_t>> m_readout_window_map;
   int64_t m_buffer_timeout;
