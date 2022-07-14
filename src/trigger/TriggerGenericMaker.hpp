@@ -114,7 +114,8 @@ private:
   daqdataformats::timestamp_t m_window_time;
 
   std::shared_ptr<MAKER> m_maker;
-
+  nlohmann::json m_maker_conf;
+  
   TriggerGenericWorker<IN, OUT, MAKER> worker;
 
   // This should return a shared_ptr to the MAKER created from conf command arguments.
@@ -125,6 +126,8 @@ private:
   {
     m_received_count = 0;
     m_sent_count = 0;
+    m_maker = make_maker(m_maker_conf);
+    worker.reconfigure();
     m_thread.start_working_thread(get_name());
   }
 
@@ -132,7 +135,13 @@ private:
 
   void do_configure(const nlohmann::json& obj)
   {
-    m_maker = make_maker(obj);
+    // P. Rodrigues 2022-07-13
+    // We stash the config here and don't actually create the maker
+    // algorithm until start time, so that the algorithm doesn't
+    // persist between runs and hold onto its state from the previous
+    // run
+    m_maker_conf = obj;
+   
     // worker should be notified that configuration potentially changed
     worker.reconfigure();
   }
