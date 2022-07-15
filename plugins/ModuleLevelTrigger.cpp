@@ -251,6 +251,7 @@ ModuleLevelTrigger::send_trigger_decisions()
       ++m_tc_received_count;
       add_tc(*tc);
       TLOG_DEBUG(3) << "pending tds size: " << m_pending_tds.size();
+    } else {
       // The condition to exit the loop is that we've been stopped and
       // there's nothing left on the input queue
       if (!m_running_flag.load()) {
