@@ -180,39 +180,39 @@ ModuleLevelTrigger::do_scrap(const nlohmann::json& /*scrapobj*/)
 }
 
 dfmessages::TriggerDecision
-ModuleLevelTrigger::create_decision(const ModuleLevelTrigger::PendingTD& m_pending_td)
+ModuleLevelTrigger::create_decision(const ModuleLevelTrigger::PendingTD& pending_td)
 {
-  m_earliest_tc_index = get_earliest_tc_index(m_pending_td);
+  m_earliest_tc_index = get_earliest_tc_index(pending_td);
   TLOG_DEBUG(3) << "earliest TC index: " << m_earliest_tc_index;
 
-  if (m_pending_td.contributing_tcs.size() > 1) {
-    TLOG_DEBUG(3) << "!!! TD created from " << m_pending_td.contributing_tcs.size() << " TCs !!!";
+  if (pending_td.contributing_tcs.size() > 1) {
+    TLOG_DEBUG(3) << "!!! TD created from " << pending_td.contributing_tcs.size() << " TCs !!!";
   }
 
   dfmessages::TriggerDecision decision;
   decision.trigger_number = m_last_trigger_number + 1;
   decision.run_number = m_run_number;
-  decision.trigger_timestamp = m_pending_td.contributing_tcs[m_earliest_tc_index].time_candidate;
+  decision.trigger_timestamp = pending_td.contributing_tcs[m_earliest_tc_index].time_candidate;
   decision.readout_type = dfmessages::ReadoutType::kLocalized;
 
   if (m_hsi_passthrough == true){
-    if (m_pending_td.contributing_tcs[m_earliest_tc_index].type == triggeralgs::TriggerCandidate::Type::kTiming){
-      decision.trigger_type = m_pending_td.contributing_tcs[m_earliest_tc_index].detid & 0xff;
+    if (pending_td.contributing_tcs[m_earliest_tc_index].type == triggeralgs::TriggerCandidate::Type::kTiming){
+      decision.trigger_type = pending_td.contributing_tcs[m_earliest_tc_index].detid & 0xff;
     } else {
-      m_trigger_type_shifted = (static_cast<int>(m_pending_td.contributing_tcs[m_earliest_tc_index].type) << 8);
+      m_trigger_type_shifted = (static_cast<int>(pending_td.contributing_tcs[m_earliest_tc_index].type) << 8);
       decision.trigger_type = m_trigger_type_shifted;
     }
   } else {
     decision.trigger_type = 1; // m_trigger_type;
   }
 
-  TLOG_DEBUG(3) << "HSI passthrough: " << m_hsi_passthrough << ", TC detid: " << m_pending_td.contributing_tcs[m_earliest_tc_index].detid << ", TC type: " << static_cast<int>(m_pending_td.contributing_tcs[m_earliest_tc_index].type) << ", DECISION trigger type: " << decision.trigger_type;
+  TLOG_DEBUG(3) << "HSI passthrough: " << m_hsi_passthrough << ", TC detid: " << pending_td.contributing_tcs[m_earliest_tc_index].detid << ", TC type: " << static_cast<int>(pending_td.contributing_tcs[m_earliest_tc_index].type) << ", DECISION trigger type: " << decision.trigger_type << " request window begin: " << pending_td.readout_start << ", request window end: " << pending_td.readout_end;
 
   for (auto link : m_links) {
     dfmessages::ComponentRequest request;
     request.component = link;
-    request.window_begin = m_pending_td.readout_start;
-    request.window_end = m_pending_td.readout_end;
+    request.window_begin = pending_td.readout_start;
+    request.window_end = pending_td.readout_end;
 
     decision.components.push_back(request);
   }
