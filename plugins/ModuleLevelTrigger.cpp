@@ -249,7 +249,7 @@ ModuleLevelTrigger::send_trigger_decisions()
     std::optional<triggeralgs::TriggerCandidate> tc = m_candidate_source->try_receive(std::chrono::milliseconds(100));
     if (tc.has_value()) {
       ++m_tc_received_count;
-      std::lock_guard<std::mutex> lock(td_vector_mutex);
+      std::lock_guard<std::mutex> lock(m_td_vector_mutex);
       add_tc(*tc);
       TLOG_DEBUG(3) << "pending tds size: " << m_pending_tds.size();
     } else {
@@ -260,7 +260,7 @@ ModuleLevelTrigger::send_trigger_decisions()
       }
     }
 
-    std::lock_guard<std::mutex> lock(td_vector_mutex);
+    std::lock_guard<std::mutex> lock(m_td_vector_mutex);
     m_ready_tds = get_ready_tds(m_pending_tds);
     TLOG_DEBUG(3) << "ready tds: " << m_ready_tds.size();
     TLOG_DEBUG(3) << "updated pending tds: " << m_pending_tds.size();
@@ -461,7 +461,7 @@ ModuleLevelTrigger::check_td_readout_length(const PendingTD& pending_td) {
 void
 ModuleLevelTrigger::clear_td_vectors() {
   TLOG_DEBUG(3) << "Starting cleanup";
-  std::lock_guard<std::mutex> lock(td_vector_mutex);
+  std::lock_guard<std::mutex> lock(m_td_vector_mutex);
   m_pending_tds.clear();
   m_ready_tds.clear();
   m_sent_tds.clear();
