@@ -132,8 +132,8 @@ ModuleLevelTrigger::do_stop(const nlohmann::json& /*stopobj*/)
 {
   // flush all pending TDs at run stop
   // TODO: check this works.
-  for ( PendingTD m_ready_td : m_pending_tds) {
-    call_tc_decision(m_ready_td, true);
+  for ( PendingTD ready_td : m_pending_tds) {
+    call_tc_decision(ready_td, true);
   }
 
   m_running_flag.store(false);
