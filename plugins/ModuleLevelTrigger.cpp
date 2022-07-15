@@ -261,19 +261,19 @@ ModuleLevelTrigger::send_trigger_decisions()
     }
 
     std::lock_guard<std::mutex> lock(m_td_vector_mutex);
-    m_ready_tds = get_ready_tds(m_pending_tds);
-    TLOG_DEBUG(3) << "ready tds: " << m_ready_tds.size();
+    auto ready_tds = get_ready_tds(m_pending_tds);
+    TLOG_DEBUG(3) << "ready tds: " << ready_tds.size();
     TLOG_DEBUG(3) << "updated pending tds: " << m_pending_tds.size();
     TLOG_DEBUG(3) << "sent tds: " << m_sent_tds.size();
 
-    for (std::vector<PendingTD>::iterator it = m_ready_tds.begin(); it != m_ready_tds.end();) {
+    for (std::vector<PendingTD>::iterator it = ready_tds.begin(); it != ready_tds.end();) {
       if (check_overlap_td(*it)) {
         m_earliest_tc_index = get_earliest_tc_index(*it);
         ers::error(TCOutOfTimeout(ERS_HERE, get_name(), it->contributing_tcs[m_earliest_tc_index].time_candidate));
         if (!m_send_timed_out_tds) { // if this is not set, drop the td
           ++m_td_dropped_count;
           m_td_dropped_tc_count += it->contributing_tcs.size();
-          it = m_ready_tds.erase(it);
+          it = ready_tds.erase(it);
           TLOG_DEBUG(3) << "overlapping previous TD, dropping!";
         } else {
           call_tc_decision(*it);
@@ -463,7 +463,6 @@ ModuleLevelTrigger::clear_td_vectors() {
   TLOG_DEBUG(3) << "Starting cleanup";
   std::lock_guard<std::mutex> lock(m_td_vector_mutex);
   m_pending_tds.clear();
-  m_ready_tds.clear();
   m_sent_tds.clear();
   TLOG_DEBUG(3) << "Ending cleanup";
 }

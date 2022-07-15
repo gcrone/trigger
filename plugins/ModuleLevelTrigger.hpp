@@ -117,7 +117,6 @@ private:
     int64_t walltime_expiration;
   };
   std::vector <PendingTD> m_pending_tds;
-  std::vector <PendingTD> m_ready_tds;
   std::vector <PendingTD> m_sent_tds;
   std::mutex m_td_vector_mutex;
   
