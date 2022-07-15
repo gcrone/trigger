@@ -119,11 +119,13 @@ private:
   std::vector <PendingTD> m_pending_tds;
   std::vector <PendingTD> m_ready_tds;
   std::vector <PendingTD> m_sent_tds;
+  std::mutex td_vector_mutex;
+  
   void add_tc(const triggeralgs::TriggerCandidate& tc);
-  void add_td(const PendingTD& m_pending_td);
-  void call_tc_decision(const PendingTD& m_pending_td, bool override_flag=false);
-  bool check_overlap(const triggeralgs::TriggerCandidate& tc, const PendingTD& m_pending_td);
-  bool check_overlap_td(const PendingTD& m_pending_td);
+  void add_td(const PendingTD& pending_td);
+  void call_tc_decision(const PendingTD& pending_td, bool override_flag=false);
+  bool check_overlap(const triggeralgs::TriggerCandidate& tc, const PendingTD& pending_td);
+  bool check_overlap_td(const PendingTD& pending_td);
   bool check_td_readout_length(const PendingTD&);
   void clear_td_vectors();
   std::vector <PendingTD> get_ready_tds(std::vector <PendingTD>& pending_tds);
@@ -132,10 +134,10 @@ private:
   std::atomic<bool> m_send_timed_out_tds;
   int64_t m_timestamp_now;
   int m_earliest_tc_index;
-  int get_earliest_tc_index(const PendingTD& m_pending_td);
+  int get_earliest_tc_index(const PendingTD& pending_td);
 
   // Create the next trigger decision
-  dfmessages::TriggerDecision create_decision(const PendingTD& m_pending_td);
+  dfmessages::TriggerDecision create_decision(const PendingTD& pending_td);
   dfmessages::trigger_type_t m_trigger_type_shifted;
 
   // Opmon variables
