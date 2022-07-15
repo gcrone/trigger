@@ -387,17 +387,16 @@ ModuleLevelTrigger::check_overlap(const triggeralgs::TriggerCandidate& tc, const
 }
 
 bool
-ModuleLevelTrigger::check_overlap_td(const PendingTD& m_pending_td) {
+ModuleLevelTrigger::check_overlap_td(const PendingTD& pending_td) {
   bool overlap;
 
-  for (PendingTD m_sent_td : m_sent_tds) {
-    if ( (m_pending_td.readout_end < m_sent_td.readout_start) 
-         || (m_pending_td.readout_start > m_sent_td.readout_end) ) { overlap = false; }
-    else { overlap = true; 
-      TLOG_DEBUG(3) << "pend start: " << m_pending_td.readout_start;
-      TLOG_DEBUG(3) << "pend end: " << m_pending_td.readout_end;
-      TLOG_DEBUG(3) << "sent start: " << m_sent_td.readout_start;
-      TLOG_DEBUG(3) << "sent end: " << m_sent_td.readout_end;
+  for (PendingTD sent_td : m_sent_tds) {
+    if ( (pending_td.readout_end < sent_td.readout_start) 
+         || (pending_td.readout_start > sent_td.readout_end) ) {
+      overlap = false;
+    } else {
+      overlap = true;
+      TLOG_DEBUG(3) << "Pending TD with start/end " << pending_td.readout_start << "/" << pending_td.readout_end << " overlaps with sent TD with start/end " << sent_td.readout_start << "/" << sent_td.readout_end;
       break;}
   }
   return overlap;
