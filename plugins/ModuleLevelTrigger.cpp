@@ -261,28 +261,26 @@ ModuleLevelTrigger::send_trigger_decisions()
     TLOG_DEBUG(3) << "updated pending tds: " << m_pending_tds.size();
     TLOG_DEBUG(3) << "sent tds: " << m_sent_tds.size();
 
-    if (m_ready_tds.size() > 0) {
-      for (std::vector<PendingTD>::iterator it = m_ready_tds.begin(); it != m_ready_tds.end(); ) {
-        if (check_overlap_td( *it )) {
-          m_earliest_tc_index = get_earliest_tc_index( *it );
-          ers::error(TCOutOfTimeout(ERS_HERE, get_name(), it->contributing_tcs[m_earliest_tc_index].time_candidate));
-          if (!m_send_timed_out_tds) { // if this is not set, drop the td
-            ++m_td_dropped_count;
-            m_td_dropped_tc_count += it->contributing_tcs.size();
-            it = m_ready_tds.erase( it );
-            TLOG_DEBUG(3) << "overlapping previous TD, dropping!";
-          } else {
-            call_tc_decision( *it );
-            add_td( *it );
-            ++it;
-          }
+    for (std::vector<PendingTD>::iterator it = m_ready_tds.begin(); it != m_ready_tds.end();) {
+      if (check_overlap_td(*it)) {
+        m_earliest_tc_index = get_earliest_tc_index(*it);
+        ers::error(TCOutOfTimeout(ERS_HERE, get_name(), it->contributing_tcs[m_earliest_tc_index].time_candidate));
+        if (!m_send_timed_out_tds) { // if this is not set, drop the td
+          ++m_td_dropped_count;
+          m_td_dropped_tc_count += it->contributing_tcs.size();
+          it = m_ready_tds.erase(it);
+          TLOG_DEBUG(3) << "overlapping previous TD, dropping!";
         } else {
-          call_tc_decision( *it );
-          add_td( *it );
+          call_tc_decision(*it);
+          add_td(*it);
           ++it;
         }
+      } else {
+        call_tc_decision(*it);
+        add_td(*it);
+        ++it;
       }
-    } 
+    }
 
     TLOG_DEBUG(3) << "updated sent tds: " << m_sent_tds.size();
 
