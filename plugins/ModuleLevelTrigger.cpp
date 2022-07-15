@@ -424,7 +424,7 @@ ModuleLevelTrigger::get_ready_tds(std::vector <PendingTD>& pending_tds) {
       ++it;
     }
   }
-  return m_return_tds; 
+  return return_tds; 
 }
 
 int 
