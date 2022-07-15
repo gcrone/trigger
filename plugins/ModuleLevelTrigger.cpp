@@ -308,40 +308,40 @@ ModuleLevelTrigger::send_trigger_decisions()
 }
 
 void
-ModuleLevelTrigger::call_tc_decision(const ModuleLevelTrigger::PendingTD& m_pending_td, bool override_flag) {
+ModuleLevelTrigger::call_tc_decision(const ModuleLevelTrigger::PendingTD& pending_td, bool override_flag) {
   TLOG_DEBUG(3) << "Override?: " << override_flag;
   if ( (!m_paused.load() && !m_dfo_is_busy.load()) || override_flag ) {
 
-    dfmessages::TriggerDecision decision = create_decision(m_pending_td);
+    dfmessages::TriggerDecision decision = create_decision(pending_td);
 
     TLOG_DEBUG(1) << "Sending a decision with triggernumber " << decision.trigger_number << " timestamp "
                   << decision.trigger_timestamp << " number of links " << decision.components.size()
-                  << " based on TC of type " << static_cast<std::underlying_type_t<decltype(m_pending_td.contributing_tcs[m_earliest_tc_index].type)>>(m_pending_td.contributing_tcs[m_earliest_tc_index].type);
+                  << " based on TC of type " << static_cast<std::underlying_type_t<decltype(pending_td.contributing_tcs[m_earliest_tc_index].type)>>(pending_td.contributing_tcs[m_earliest_tc_index].type);
 
     try { 
       auto td_sender = get_iom_sender<dfmessages::TriggerDecision>(m_trigger_decision_connection);
       td_sender->send(std::move(decision), std::chrono::milliseconds(1));
       m_td_sent_count++;
-      m_td_sent_tc_count += m_pending_td.contributing_tcs.size(); 
+      m_td_sent_tc_count += pending_td.contributing_tcs.size(); 
       m_last_trigger_number++;
     } catch (const ers::Issue& e) {
       ers::error(e);
       TLOG_DEBUG(1) << "The network is misbehaving: it accepted TD but the send failed for "
-                    << m_pending_td.contributing_tcs[m_earliest_tc_index].time_candidate;
+                    << pending_td.contributing_tcs[m_earliest_tc_index].time_candidate;
       m_td_queue_timeout_expired_err_count++;
-      m_td_queue_timeout_expired_err_tc_count += m_pending_td.contributing_tcs.size();
+      m_td_queue_timeout_expired_err_tc_count += pending_td.contributing_tcs.size();
     }
 
   } else if (m_paused.load()) {
     ++m_td_paused_count;
-    m_td_paused_tc_count += m_pending_td.contributing_tcs.size();
+    m_td_paused_tc_count += pending_td.contributing_tcs.size();
     TLOG_DEBUG(1) << "Triggers are paused. Not sending a TriggerDecision ";
   } else {
     ers::warning(TriggerInhibited(ERS_HERE, m_run_number));
     TLOG_DEBUG(1) << "The DFO is busy. Not sending a TriggerDecision for candidate timestamp "
-                  << m_pending_td.contributing_tcs[m_earliest_tc_index].time_candidate;
+                  << pending_td.contributing_tcs[m_earliest_tc_index].time_candidate;
     m_td_inhibited_count++;
-    m_td_inhibited_tc_count += m_pending_td.contributing_tcs.size();
+    m_td_inhibited_tc_count += pending_td.contributing_tcs.size();
   }
   m_td_total_count++;
 }
