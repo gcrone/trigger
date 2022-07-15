@@ -374,11 +374,11 @@ ModuleLevelTrigger::add_tc(const triggeralgs::TriggerCandidate& tc) {
 }
 
 bool
-ModuleLevelTrigger::check_overlap(const triggeralgs::TriggerCandidate& tc, const PendingTD& m_pending_td) {
+ModuleLevelTrigger::check_overlap(const triggeralgs::TriggerCandidate& tc, const PendingTD& pending_td) {
   bool overlap;
  
-  if ( ((tc.time_candidate + tc.time_end) < m_pending_td.readout_start) 
-       || ((tc.time_candidate - tc.time_start) > m_pending_td.readout_end) ) { overlap = false; }
+  if ( ((tc.time_candidate + tc.time_end) < pending_td.readout_start) 
+       || ((tc.time_candidate - tc.time_start) > pending_td.readout_end) ) { overlap = false; }
   else { overlap = true; }
   
   return overlap;
@@ -402,24 +402,24 @@ ModuleLevelTrigger::check_overlap_td(const PendingTD& m_pending_td) {
 }
 
 void
-ModuleLevelTrigger::add_td(const PendingTD& m_pending_td) {
-  m_sent_tds.push_back(m_pending_td);
+ModuleLevelTrigger::add_td(const PendingTD& pending_td) {
+  m_sent_tds.push_back(pending_td);
   while (m_sent_tds.size() > 20) {
     m_sent_tds.erase( m_sent_tds.begin() );
   }
 }
 
 std::vector <ModuleLevelTrigger::PendingTD>
-ModuleLevelTrigger::get_ready_tds(std::vector <PendingTD>& m_pending_tds) {
-  std::vector <PendingTD> m_return_tds;
-  for (std::vector<PendingTD>::iterator it = m_pending_tds.begin(); it != m_pending_tds.end(); ) {
+ModuleLevelTrigger::get_ready_tds(std::vector <PendingTD>& pending_tds) {
+  std::vector <PendingTD> return_tds;
+  for (std::vector<PendingTD>::iterator it = pending_tds.begin(); it != pending_tds.end(); ) {
     m_timestamp_now = std::chrono::duration_cast<std::chrono::milliseconds>(system_clock::now().time_since_epoch()).count(); 
     if ( m_timestamp_now >= it->walltime_expiration ) {
-      m_return_tds.push_back(*it);
-      it = m_pending_tds.erase(it);
+      return_tds.push_back(*it);
+      it = pending_tds.erase(it);
     } else if (check_td_readout_length(*it) == true) { // Also pass on TDs with (too) long readout window
-      m_return_tds.push_back(*it);
-      it = m_pending_tds.erase(it);
+      return_tds.push_back(*it);
+      it = pending_tds.erase(it);
     } else {
       ++it;
     }
@@ -428,16 +428,16 @@ ModuleLevelTrigger::get_ready_tds(std::vector <PendingTD>& m_pending_tds) {
 }
 
 int 
-ModuleLevelTrigger::get_earliest_tc_index(const PendingTD& m_pending_td) {
+ModuleLevelTrigger::get_earliest_tc_index(const PendingTD& pending_td) {
   int earliest_tc_index = -1;
   triggeralgs::timestamp_t earliest_tc_time;
-  for (int i=0; i<static_cast<int>(m_pending_td.contributing_tcs.size()); i++) {
+  for (int i=0; i<static_cast<int>(pending_td.contributing_tcs.size()); i++) {
     if (earliest_tc_index == -1) { 
-      earliest_tc_time = m_pending_td.contributing_tcs[i].time_candidate;
+      earliest_tc_time = pending_td.contributing_tcs[i].time_candidate;
       earliest_tc_index = i; 
     } else {
-      if (m_pending_td.contributing_tcs[i].time_candidate < earliest_tc_time) { 
-        earliest_tc_time = m_pending_td.contributing_tcs[i].time_candidate; 
+      if (pending_td.contributing_tcs[i].time_candidate < earliest_tc_time) { 
+        earliest_tc_time = pending_td.contributing_tcs[i].time_candidate; 
         earliest_tc_index = i;
       }
     }
@@ -446,11 +446,11 @@ ModuleLevelTrigger::get_earliest_tc_index(const PendingTD& m_pending_td) {
 }
 
 bool
-ModuleLevelTrigger::check_td_readout_length(const PendingTD& m_pending_td) {
+ModuleLevelTrigger::check_td_readout_length(const PendingTD& pending_td) {
   bool td_too_long = false;
-  if ( static_cast<int64_t>(m_pending_td.readout_end - m_pending_td.readout_start) >= m_td_readout_limit ) {
+  if ( static_cast<int64_t>(pending_td.readout_end - pending_td.readout_start) >= m_td_readout_limit ) {
     td_too_long = true;
-    TLOG_DEBUG(3) << "Too long readout window: " << (m_pending_td.readout_end - m_pending_td.readout_start)
+    TLOG_DEBUG(3) << "Too long readout window: " << (pending_td.readout_end - pending_td.readout_start)
     << ", sending immediate TD!";
   }
   return td_too_long;
