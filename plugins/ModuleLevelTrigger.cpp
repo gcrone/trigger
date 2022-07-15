@@ -350,8 +350,8 @@ ModuleLevelTrigger::add_tc(const triggeralgs::TriggerCandidate& tc) {
      if (check_overlap(tc, *it)) {
        TLOG_DEBUG(3) << "These overlap!";
        it->contributing_tcs.push_back(tc);
-       it->readout_start = ( (tc.time_candidate - tc.time_start) >= it->readout_start) ? it->readout_start : (tc.time_candidate - tc.time_start);
-       it->readout_end = ( (tc.time_candidate + tc.time_end) >= it->readout_end) ? (tc.time_candidate + tc.time_end) : it->readout_end;
+       it->readout_start = ( tc.time_start >= it->readout_start) ? it->readout_start : tc.time_start;
+       it->readout_end = ( tc.time_end >= it->readout_end) ?  tc.time_end : it->readout_end;
        it->walltime_expiration = tc_wallclock_arrived + m_buffer_timeout;
        added_to_existing = true;
        break;
@@ -362,8 +362,8 @@ ModuleLevelTrigger::add_tc(const triggeralgs::TriggerCandidate& tc) {
   if (!added_to_existing) {
     PendingTD td_candidate;
     td_candidate.contributing_tcs.push_back(tc);
-    td_candidate.readout_start = tc.time_candidate - tc.time_start;
-    td_candidate.readout_end = tc.time_candidate + tc.time_end;
+    td_candidate.readout_start = tc.time_start;
+    td_candidate.readout_end = tc.time_end;
     td_candidate.walltime_expiration = tc_wallclock_arrived + m_buffer_timeout;
     m_pending_tds.push_back(td_candidate);
   }
