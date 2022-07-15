@@ -136,11 +136,13 @@ ModuleLevelTrigger::do_stop(const nlohmann::json& /*stopobj*/)
     call_tc_decision(m_ready_td, true);
   }
 
-  // Drop all TDs in vetors at run stage change
-  clear_td_vectors();
-
   m_running_flag.store(false);
   m_send_trigger_decisions_thread.join();
+
+  // Drop all TDs in vectors at run stage change. Have to do this
+  // after joining m_send_trigger_decisions_thread so we don't
+  // concurrently access the vectors
+  clear_td_vectors();
 
   m_lc_deadtime = m_livetime_counter->get_time(LivetimeCounter::State::kDead) +
                   m_livetime_counter->get_time(LivetimeCounter::State::kPaused);
