@@ -245,7 +245,7 @@ ModuleLevelTrigger::send_trigger_decisions()
   // New buffering logic here
   while (m_running_flag) {
     std::optional<triggeralgs::TriggerCandidate> tc = m_candidate_source->try_receive(std::chrono::milliseconds(100));
-    if (!tc.has_value()) {
+    if (tc.has_value()) {
       ++m_tc_received_count;
       add_tc(*tc);
       TLOG_DEBUG(3) << "pending tds size: " << m_pending_tds.size();
