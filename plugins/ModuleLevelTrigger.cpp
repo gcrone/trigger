@@ -45,8 +45,8 @@ ModuleLevelTrigger::ModuleLevelTrigger(const std::string& name)
   register_command("conf",   &ModuleLevelTrigger::do_configure);
   register_command("start",  &ModuleLevelTrigger::do_start);
   register_command("stop",   &ModuleLevelTrigger::do_stop);
-  register_command("pause",  &ModuleLevelTrigger::do_pause);
-  register_command("resume", &ModuleLevelTrigger::do_resume);
+  register_command("disable_triggers",  &ModuleLevelTrigger::do_pause);
+  register_command("enable_triggers", &ModuleLevelTrigger::do_resume);
   register_command("scrap",  &ModuleLevelTrigger::do_scrap);
   // clang-format on
 }
