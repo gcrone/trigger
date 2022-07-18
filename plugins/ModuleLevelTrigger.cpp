@@ -359,7 +359,7 @@ ModuleLevelTrigger::add_tc(const triggeralgs::TriggerCandidate& tc) {
 
   for ( std::vector<PendingTD>::iterator it = m_pending_tds.begin(); it != m_pending_tds.end(); ) {
      if (check_overlap(tc, *it)) {
-       TLOG_DEBUG(3) << "These overlap!";
+       TLOG_DEBUG(3) << "TC with start/end times " << tc.time_start << "/" << tc.time_end << " overlaps with pending TD with start/end times " << it->readout_start << "/" << it->readout_end;
        it->contributing_tcs.push_back(tc);
        it->readout_start = ( tc.time_start >= it->readout_start) ? it->readout_start : tc.time_start;
        it->readout_end = ( tc.time_end >= it->readout_end) ?  tc.time_end : it->readout_end;
