@@ -269,7 +269,13 @@ ModuleLevelTrigger::send_trigger_decisions()
     for (std::vector<PendingTD>::iterator it = ready_tds.begin(); it != ready_tds.end();) {
       if (check_overlap_td(*it)) {
         m_earliest_tc_index = get_earliest_tc_index(*it);
-        ers::error(TCOutOfTimeout(ERS_HERE, get_name(), it->contributing_tcs[m_earliest_tc_index].time_candidate));
+        auto const& earliest_tc = it->contributing_tcs[m_earliest_tc_index];
+        ers::error(TCOutOfTimeout(ERS_HERE,
+                                  get_name(),
+                                  static_cast<int>(earliest_tc.type),
+                                  earliest_tc.time_candidate,
+                                  it->readout_start,
+                                  it->readout_end));
         if (!m_send_timed_out_tds) { // if this is not set, drop the td
           ++m_td_dropped_count;
           m_td_dropped_tc_count += it->contributing_tcs.size();

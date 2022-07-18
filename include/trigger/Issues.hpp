@@ -160,9 +160,12 @@ ERS_DECLARE_ISSUE_BASE(trigger,
 ERS_DECLARE_ISSUE_BASE(trigger,
                        TCOutOfTimeout,
                        appfwk::GeneralDAQModuleIssue,
-                       "TC overlapping previous TD readout window: " << tc_timestamp,
+                       "TC of type " << tc_type << ", timestamp " << tc_timestamp << " overlaps with previous TD readout window: [" << td_start << ", " << td_end << "]",
                        ((std::string)name),
-                       ((int64_t)tc_timestamp))
+                       ((int)tc_type)
+                       ((triggeralgs::timestamp_t)tc_timestamp)
+                       ((triggeralgs::timestamp_t)td_start)
+                       ((triggeralgs::timestamp_t)td_end))
 
 ERS_DECLARE_ISSUE_BASE(trigger,
                        InvalidHSIEventRunNumber,
