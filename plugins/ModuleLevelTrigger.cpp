@@ -384,13 +384,8 @@ ModuleLevelTrigger::add_tc(const triggeralgs::TriggerCandidate& tc) {
 
 bool
 ModuleLevelTrigger::check_overlap(const triggeralgs::TriggerCandidate& tc, const PendingTD& pending_td) {
-  bool overlap;
- 
-  if ( ((tc.time_candidate + tc.time_end) < pending_td.readout_start) 
-       || ((tc.time_candidate - tc.time_start) > pending_td.readout_end) ) { overlap = false; }
-  else { overlap = true; }
-  
-  return overlap;
+  return !( (tc.time_end < pending_td.readout_start) ||
+            (tc.time_start > pending_td.readout_end) );
 }
 
 bool
