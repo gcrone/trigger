@@ -248,6 +248,7 @@ ModuleLevelTrigger::send_trigger_decisions()
   while (m_running_flag) {
     std::optional<triggeralgs::TriggerCandidate> tc = m_candidate_source->try_receive(std::chrono::milliseconds(100));
     if (tc.has_value()) {
+      TLOG_DEBUG(1) << "Got TC of type " << static_cast<int>(tc->type) << ", timestamp " << tc->time_candidate << ", start/end " << tc->time_start << "/" << tc->time_end;
       ++m_tc_received_count;
       std::lock_guard<std::mutex> lock(m_td_vector_mutex);
       add_tc(*tc);
@@ -341,7 +342,7 @@ ModuleLevelTrigger::call_tc_decision(const ModuleLevelTrigger::PendingTD& pendin
   } else if (m_paused.load()) {
     ++m_td_paused_count;
     m_td_paused_tc_count += pending_td.contributing_tcs.size();
-    TLOG_DEBUG(1) << "Triggers are paused. Not sending a TriggerDecision ";
+    TLOG_DEBUG(1) << "Triggers are paused. Not sending a TriggerDecision for pending TD with start/end times " << pending_td.readout_start << "/" << pending_td.readout_end;
   } else {
     ers::warning(TriggerInhibited(ERS_HERE, m_run_number));
     TLOG_DEBUG(1) << "The DFO is busy. Not sending a TriggerDecision for candidate timestamp "
@@ -467,6 +468,7 @@ void
 ModuleLevelTrigger::clear_td_vectors() {
   TLOG_DEBUG(3) << "Starting cleanup";
   std::lock_guard<std::mutex> lock(m_td_vector_mutex);
+  TLOG_DEBUG(1) << "clear_td_vectors() clearing " << m_pending_tds.size() << " pending TDs and " << m_sent_tds.size() << " sent TDs";
   m_pending_tds.clear();
   m_sent_tds.clear();
   TLOG_DEBUG(3) << "Ending cleanup";
