@@ -54,7 +54,8 @@ ModuleLevelTrigger::ModuleLevelTrigger(const std::string& name)
 void
 ModuleLevelTrigger::init(const nlohmann::json& iniobj)
 {
-  m_candidate_source = get_iom_receiver<triggeralgs::TriggerCandidate>(appfwk::connection_inst(iniobj, "trigger_candidate_source"));
+  m_candidate_source =
+    get_iom_receiver<triggeralgs::TriggerCandidate>(appfwk::connection_inst(iniobj, "trigger_candidate_source"));
 }
 
 void
@@ -123,7 +124,7 @@ ModuleLevelTrigger::do_start(const nlohmann::json& startobj)
 
   m_send_trigger_decisions_thread = std::thread(&ModuleLevelTrigger::send_trigger_decisions, this);
   pthread_setname_np(m_send_trigger_decisions_thread.native_handle(), "mlt-trig-dec");
-  
+
   ers::info(TriggerStartOfRun(ERS_HERE, m_run_number));
 }
 
@@ -132,7 +133,7 @@ ModuleLevelTrigger::do_stop(const nlohmann::json& /*stopobj*/)
 {
   // flush all pending TDs at run stop
   // TODO: check this works.
-  for ( PendingTD ready_td : m_pending_tds) {
+  for (PendingTD ready_td : m_pending_tds) {
     call_tc_decision(ready_td, true);
   }
 
@@ -158,7 +159,7 @@ ModuleLevelTrigger::do_pause(const nlohmann::json& /*pauseobj*/)
 {
   // Drop all TDs in vetors at run stage change
   clear_td_vectors();
-  
+
   m_paused.store(true);
   m_livetime_counter->set_state(LivetimeCounter::State::kPaused);
   TLOG() << "******* Triggers PAUSED! in run " << m_run_number << " *********";
@@ -197,8 +198,8 @@ ModuleLevelTrigger::create_decision(const ModuleLevelTrigger::PendingTD& pending
   decision.trigger_timestamp = pending_td.contributing_tcs[m_earliest_tc_index].time_candidate;
   decision.readout_type = dfmessages::ReadoutType::kLocalized;
 
-  if (m_hsi_passthrough == true){
-    if (pending_td.contributing_tcs[m_earliest_tc_index].type == triggeralgs::TriggerCandidate::Type::kTiming){
+  if (m_hsi_passthrough == true) {
+    if (pending_td.contributing_tcs[m_earliest_tc_index].type == triggeralgs::TriggerCandidate::Type::kTiming) {
       decision.trigger_type = pending_td.contributing_tcs[m_earliest_tc_index].detid & 0xff;
     } else {
       m_trigger_type_shifted = (static_cast<int>(pending_td.contributing_tcs[m_earliest_tc_index].type) << 8);
@@ -208,7 +209,12 @@ ModuleLevelTrigger::create_decision(const ModuleLevelTrigger::PendingTD& pending
     decision.trigger_type = 1; // m_trigger_type;
   }
 
-  TLOG_DEBUG(3) << "HSI passthrough: " << m_hsi_passthrough << ", TC detid: " << pending_td.contributing_tcs[m_earliest_tc_index].detid << ", TC type: " << static_cast<int>(pending_td.contributing_tcs[m_earliest_tc_index].type) << ", DECISION trigger type: " << decision.trigger_type << " request window begin: " << pending_td.readout_start << ", request window end: " << pending_td.readout_end;
+  TLOG_DEBUG(3) << "HSI passthrough: " << m_hsi_passthrough
+                << ", TC detid: " << pending_td.contributing_tcs[m_earliest_tc_index].detid
+                << ", TC type: " << static_cast<int>(pending_td.contributing_tcs[m_earliest_tc_index].type)
+                << ", DECISION trigger type: " << decision.trigger_type
+                << " request window begin: " << pending_td.readout_start
+                << ", request window end: " << pending_td.readout_end;
 
   for (auto link : m_links) {
     dfmessages::ComponentRequest request;
@@ -248,7 +254,8 @@ ModuleLevelTrigger::send_trigger_decisions()
   while (m_running_flag) {
     std::optional<triggeralgs::TriggerCandidate> tc = m_candidate_source->try_receive(std::chrono::milliseconds(100));
     if (tc.has_value()) {
-      TLOG_DEBUG(1) << "Got TC of type " << static_cast<int>(tc->type) << ", timestamp " << tc->time_candidate << ", start/end " << tc->time_start << "/" << tc->time_end;
+      TLOG_DEBUG(1) << "Got TC of type " << static_cast<int>(tc->type) << ", timestamp " << tc->time_candidate
+                    << ", start/end " << tc->time_start << "/" << tc->time_end;
       ++m_tc_received_count;
       std::lock_guard<std::mutex> lock(m_td_vector_mutex);
       add_tc(*tc);
@@ -295,13 +302,14 @@ ModuleLevelTrigger::send_trigger_decisions()
     }
 
     TLOG_DEBUG(3) << "updated sent tds: " << m_sent_tds.size();
-
   }
 
   TLOG() << "Run " << m_run_number << ": "
-         << "Received " << m_tc_received_count << " TCs. Sent " << m_td_sent_count.load() << " TDs consisting of " << m_td_sent_tc_count.load() << " TCs. "
-         << m_td_paused_count.load() << " TDs (" << m_td_paused_tc_count.load() << " TCs) were created during pause, and " << m_td_inhibited_count.load()
-         << " TDs (" << m_td_inhibited_tc_count.load() << " TCs) were inhibited. " << m_td_dropped_count.load() << " TDs (" << m_td_dropped_tc_count.load() << " TCs) were dropped.";
+         << "Received " << m_tc_received_count << " TCs. Sent " << m_td_sent_count.load() << " TDs consisting of "
+         << m_td_sent_tc_count.load() << " TCs. " << m_td_paused_count.load() << " TDs (" << m_td_paused_tc_count.load()
+         << " TCs) were created during pause, and " << m_td_inhibited_count.load() << " TDs ("
+         << m_td_inhibited_tc_count.load() << " TCs) were inhibited. " << m_td_dropped_count.load() << " TDs ("
+         << m_td_dropped_tc_count.load() << " TCs) were dropped.";
 
   m_lc_kLive_count = m_livetime_counter->get_time(LivetimeCounter::State::kLive);
   m_lc_kPaused_count = m_livetime_counter->get_time(LivetimeCounter::State::kPaused);
@@ -315,21 +323,24 @@ ModuleLevelTrigger::send_trigger_decisions()
 }
 
 void
-ModuleLevelTrigger::call_tc_decision(const ModuleLevelTrigger::PendingTD& pending_td, bool override_flag) {
+ModuleLevelTrigger::call_tc_decision(const ModuleLevelTrigger::PendingTD& pending_td, bool override_flag)
+{
   TLOG_DEBUG(3) << "Override?: " << override_flag;
-  if ( (!m_paused.load() && !m_dfo_is_busy.load()) || override_flag ) {
+  if ((!m_paused.load() && !m_dfo_is_busy.load()) || override_flag) {
 
     dfmessages::TriggerDecision decision = create_decision(pending_td);
 
-    TLOG_DEBUG(1) << "Sending a decision with triggernumber " << decision.trigger_number << " timestamp "
-                  << decision.trigger_timestamp << " number of links " << decision.components.size()
-                  << " based on TC of type " << static_cast<std::underlying_type_t<decltype(pending_td.contributing_tcs[m_earliest_tc_index].type)>>(pending_td.contributing_tcs[m_earliest_tc_index].type);
+    TLOG_DEBUG(1)
+      << "Sending a decision with triggernumber " << decision.trigger_number << " timestamp "
+      << decision.trigger_timestamp << " number of links " << decision.components.size() << " based on TC of type "
+      << static_cast<std::underlying_type_t<decltype(pending_td.contributing_tcs[m_earliest_tc_index].type)>>(
+           pending_td.contributing_tcs[m_earliest_tc_index].type);
 
-    try { 
+    try {
       auto td_sender = get_iom_sender<dfmessages::TriggerDecision>(m_trigger_decision_connection);
       td_sender->send(std::move(decision), std::chrono::milliseconds(1));
       m_td_sent_count++;
-      m_td_sent_tc_count += pending_td.contributing_tcs.size(); 
+      m_td_sent_tc_count += pending_td.contributing_tcs.size();
       m_last_trigger_number++;
     } catch (const ers::Issue& e) {
       ers::error(e);
@@ -342,7 +353,8 @@ ModuleLevelTrigger::call_tc_decision(const ModuleLevelTrigger::PendingTD& pendin
   } else if (m_paused.load()) {
     ++m_td_paused_count;
     m_td_paused_tc_count += pending_td.contributing_tcs.size();
-    TLOG_DEBUG(1) << "Triggers are paused. Not sending a TriggerDecision for pending TD with start/end times " << pending_td.readout_start << "/" << pending_td.readout_end;
+    TLOG_DEBUG(1) << "Triggers are paused. Not sending a TriggerDecision for pending TD with start/end times "
+                  << pending_td.readout_start << "/" << pending_td.readout_end;
   } else {
     ers::warning(TriggerInhibited(ERS_HERE, m_run_number));
     TLOG_DEBUG(1) << "The DFO is busy. Not sending a TriggerDecision for candidate timestamp "
@@ -354,23 +366,26 @@ ModuleLevelTrigger::call_tc_decision(const ModuleLevelTrigger::PendingTD& pendin
 }
 
 void
-ModuleLevelTrigger::add_tc(const triggeralgs::TriggerCandidate& tc) {
+ModuleLevelTrigger::add_tc(const triggeralgs::TriggerCandidate& tc)
+{
   bool added_to_existing = false;
-  int64_t tc_wallclock_arrived = std::chrono::duration_cast<std::chrono::milliseconds>(system_clock::now().time_since_epoch()).count();
+  int64_t tc_wallclock_arrived =
+    std::chrono::duration_cast<std::chrono::milliseconds>(system_clock::now().time_since_epoch()).count();
 
-  for ( std::vector<PendingTD>::iterator it = m_pending_tds.begin(); it != m_pending_tds.end(); ) {
-     if (check_overlap(tc, *it)) {
-       TLOG_DEBUG(3) << "TC with start/end times " << tc.time_start << "/" << tc.time_end << " overlaps with pending TD with start/end times " << it->readout_start << "/" << it->readout_end;
-       it->contributing_tcs.push_back(tc);
-       it->readout_start = ( tc.time_start >= it->readout_start) ? it->readout_start : tc.time_start;
-       it->readout_end = ( tc.time_end >= it->readout_end) ?  tc.time_end : it->readout_end;
-       it->walltime_expiration = tc_wallclock_arrived + m_buffer_timeout;
-       added_to_existing = true;
-       break;
-     }
-     ++it;
+  for (std::vector<PendingTD>::iterator it = m_pending_tds.begin(); it != m_pending_tds.end();) {
+    if (check_overlap(tc, *it)) {
+      TLOG_DEBUG(3) << "TC with start/end times " << tc.time_start << "/" << tc.time_end
+                    << " overlaps with pending TD with start/end times " << it->readout_start << "/" << it->readout_end;
+      it->contributing_tcs.push_back(tc);
+      it->readout_start = (tc.time_start >= it->readout_start) ? it->readout_start : tc.time_start;
+      it->readout_end = (tc.time_end >= it->readout_end) ? tc.time_end : it->readout_end;
+      it->walltime_expiration = tc_wallclock_arrived + m_buffer_timeout;
+      added_to_existing = true;
+      break;
+    }
+    ++it;
   }
-  
+
   if (!added_to_existing) {
     PendingTD td_candidate;
     td_candidate.contributing_tcs.push_back(tc);
@@ -383,41 +398,46 @@ ModuleLevelTrigger::add_tc(const triggeralgs::TriggerCandidate& tc) {
 }
 
 bool
-ModuleLevelTrigger::check_overlap(const triggeralgs::TriggerCandidate& tc, const PendingTD& pending_td) {
-  return !( (tc.time_end < pending_td.readout_start) ||
-            (tc.time_start > pending_td.readout_end) );
+ModuleLevelTrigger::check_overlap(const triggeralgs::TriggerCandidate& tc, const PendingTD& pending_td)
+{
+  return !((tc.time_end < pending_td.readout_start) || (tc.time_start > pending_td.readout_end));
 }
 
 bool
-ModuleLevelTrigger::check_overlap_td(const PendingTD& pending_td) {
+ModuleLevelTrigger::check_overlap_td(const PendingTD& pending_td)
+{
   bool overlap;
 
   for (PendingTD sent_td : m_sent_tds) {
-    if ( (pending_td.readout_end < sent_td.readout_start) 
-         || (pending_td.readout_start > sent_td.readout_end) ) {
+    if ((pending_td.readout_end < sent_td.readout_start) || (pending_td.readout_start > sent_td.readout_end)) {
       overlap = false;
     } else {
       overlap = true;
-      TLOG_DEBUG(3) << "Pending TD with start/end " << pending_td.readout_start << "/" << pending_td.readout_end << " overlaps with sent TD with start/end " << sent_td.readout_start << "/" << sent_td.readout_end;
-      break;}
+      TLOG_DEBUG(3) << "Pending TD with start/end " << pending_td.readout_start << "/" << pending_td.readout_end
+                    << " overlaps with sent TD with start/end " << sent_td.readout_start << "/" << sent_td.readout_end;
+      break;
+    }
   }
   return overlap;
 }
 
 void
-ModuleLevelTrigger::add_td(const PendingTD& pending_td) {
+ModuleLevelTrigger::add_td(const PendingTD& pending_td)
+{
   m_sent_tds.push_back(pending_td);
   while (m_sent_tds.size() > 20) {
-    m_sent_tds.erase( m_sent_tds.begin() );
+    m_sent_tds.erase(m_sent_tds.begin());
   }
 }
 
-std::vector <ModuleLevelTrigger::PendingTD>
-ModuleLevelTrigger::get_ready_tds(std::vector <PendingTD>& pending_tds) {
-  std::vector <PendingTD> return_tds;
-  for (std::vector<PendingTD>::iterator it = pending_tds.begin(); it != pending_tds.end(); ) {
-    m_timestamp_now = std::chrono::duration_cast<std::chrono::milliseconds>(system_clock::now().time_since_epoch()).count(); 
-    if ( m_timestamp_now >= it->walltime_expiration ) {
+std::vector<ModuleLevelTrigger::PendingTD>
+ModuleLevelTrigger::get_ready_tds(std::vector<PendingTD>& pending_tds)
+{
+  std::vector<PendingTD> return_tds;
+  for (std::vector<PendingTD>::iterator it = pending_tds.begin(); it != pending_tds.end();) {
+    m_timestamp_now =
+      std::chrono::duration_cast<std::chrono::milliseconds>(system_clock::now().time_since_epoch()).count();
+    if (m_timestamp_now >= it->walltime_expiration) {
       return_tds.push_back(*it);
       it = pending_tds.erase(it);
     } else if (check_td_readout_length(*it) == true) { // Also pass on TDs with (too) long readout window
@@ -427,20 +447,21 @@ ModuleLevelTrigger::get_ready_tds(std::vector <PendingTD>& pending_tds) {
       ++it;
     }
   }
-  return return_tds; 
+  return return_tds;
 }
 
-int 
-ModuleLevelTrigger::get_earliest_tc_index(const PendingTD& pending_td) {
+int
+ModuleLevelTrigger::get_earliest_tc_index(const PendingTD& pending_td)
+{
   int earliest_tc_index = -1;
   triggeralgs::timestamp_t earliest_tc_time;
-  for (int i=0; i<static_cast<int>(pending_td.contributing_tcs.size()); i++) {
-    if (earliest_tc_index == -1) { 
+  for (int i = 0; i < static_cast<int>(pending_td.contributing_tcs.size()); i++) {
+    if (earliest_tc_index == -1) {
       earliest_tc_time = pending_td.contributing_tcs[i].time_candidate;
-      earliest_tc_index = i; 
+      earliest_tc_index = i;
     } else {
-      if (pending_td.contributing_tcs[i].time_candidate < earliest_tc_time) { 
-        earliest_tc_time = pending_td.contributing_tcs[i].time_candidate; 
+      if (pending_td.contributing_tcs[i].time_candidate < earliest_tc_time) {
+        earliest_tc_time = pending_td.contributing_tcs[i].time_candidate;
         earliest_tc_index = i;
       }
     }
@@ -449,21 +470,24 @@ ModuleLevelTrigger::get_earliest_tc_index(const PendingTD& pending_td) {
 }
 
 bool
-ModuleLevelTrigger::check_td_readout_length(const PendingTD& pending_td) {
+ModuleLevelTrigger::check_td_readout_length(const PendingTD& pending_td)
+{
   bool td_too_long = false;
-  if ( static_cast<int64_t>(pending_td.readout_end - pending_td.readout_start) >= m_td_readout_limit ) {
+  if (static_cast<int64_t>(pending_td.readout_end - pending_td.readout_start) >= m_td_readout_limit) {
     td_too_long = true;
     TLOG_DEBUG(3) << "Too long readout window: " << (pending_td.readout_end - pending_td.readout_start)
-    << ", sending immediate TD!";
+                  << ", sending immediate TD!";
   }
   return td_too_long;
 }
 
 void
-ModuleLevelTrigger::clear_td_vectors() {
+ModuleLevelTrigger::clear_td_vectors()
+{
   TLOG_DEBUG(3) << "Starting cleanup";
   std::lock_guard<std::mutex> lock(m_td_vector_mutex);
-  TLOG_DEBUG(1) << "clear_td_vectors() clearing " << m_pending_tds.size() << " pending TDs and " << m_sent_tds.size() << " sent TDs";
+  TLOG_DEBUG(1) << "clear_td_vectors() clearing " << m_pending_tds.size() << " pending TDs and " << m_sent_tds.size()
+                << " sent TDs";
   m_pending_tds.clear();
   m_sent_tds.clear();
   TLOG_DEBUG(3) << "Ending cleanup";
@@ -472,9 +496,11 @@ ModuleLevelTrigger::clear_td_vectors() {
 void
 ModuleLevelTrigger::dfo_busy_callback(dfmessages::TriggerInhibit& inhibit)
 {
-  TLOG_DEBUG(17) << "Received inhibit message with busy status " << inhibit.busy << " and run number " << inhibit.run_number;
+  TLOG_DEBUG(17) << "Received inhibit message with busy status " << inhibit.busy << " and run number "
+                 << inhibit.run_number;
   if (inhibit.run_number == m_run_number) {
-    TLOG_DEBUG(18) << "Changing our flag for the DFO busy state from " << m_dfo_is_busy.load() << " to " << inhibit.busy;
+    TLOG_DEBUG(18) << "Changing our flag for the DFO busy state from " << m_dfo_is_busy.load() << " to "
+                   << inhibit.busy;
     m_dfo_is_busy = inhibit.busy;
     m_livetime_counter->set_state(LivetimeCounter::State::kDead);
   }
