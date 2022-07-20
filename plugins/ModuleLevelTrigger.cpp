@@ -440,7 +440,7 @@ ModuleLevelTrigger::get_ready_tds(std::vector<PendingTD>& pending_tds)
     if (m_timestamp_now >= it->walltime_expiration) {
       return_tds.push_back(*it);
       it = pending_tds.erase(it);
-    } else if (check_td_readout_length(*it) == true) { // Also pass on TDs with (too) long readout window
+    } else if (check_td_readout_length(*it)) { // Also pass on TDs with (too) long readout window
       return_tds.push_back(*it);
       it = pending_tds.erase(it);
     } else {
