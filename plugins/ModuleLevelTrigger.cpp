@@ -270,9 +270,7 @@ ModuleLevelTrigger::send_trigger_decisions()
 
     std::lock_guard<std::mutex> lock(m_td_vector_mutex);
     auto ready_tds = get_ready_tds(m_pending_tds);
-    TLOG_DEBUG(3) << "ready tds: " << ready_tds.size();
-    TLOG_DEBUG(3) << "updated pending tds: " << m_pending_tds.size();
-    TLOG_DEBUG(3) << "sent tds: " << m_sent_tds.size();
+    TLOG_DEBUG(3) << "ready tds: " << ready_tds.size() << ", updated pending tds: " << m_pending_tds.size() << ", sent tds: " << m_sent_tds.size();
 
     for (std::vector<PendingTD>::iterator it = ready_tds.begin(); it != ready_tds.end();) {
       if (check_overlap_td(*it)) {
