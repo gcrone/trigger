@@ -252,7 +252,7 @@ ModuleLevelTrigger::send_trigger_decisions()
 
   // New buffering logic here
   while (m_running_flag) {
-    std::optional<triggeralgs::TriggerCandidate> tc = m_candidate_source->try_receive(std::chrono::milliseconds(100));
+    std::optional<triggeralgs::TriggerCandidate> tc = m_candidate_source->try_receive(std::chrono::milliseconds(10));
     if (tc.has_value()) {
       TLOG_DEBUG(1) << "Got TC of type " << static_cast<int>(tc->type) << ", timestamp " << tc->time_candidate
                     << ", start/end " << tc->time_start << "/" << tc->time_end;
