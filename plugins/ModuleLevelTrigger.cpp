@@ -435,9 +435,9 @@ ModuleLevelTrigger::get_ready_tds(std::vector<PendingTD>& pending_tds)
 {
   std::vector<PendingTD> return_tds;
   for (std::vector<PendingTD>::iterator it = pending_tds.begin(); it != pending_tds.end();) {
-    m_timestamp_now =
+    auto timestamp_now =
       std::chrono::duration_cast<std::chrono::milliseconds>(system_clock::now().time_since_epoch()).count();
-    if (m_timestamp_now >= it->walltime_expiration) {
+    if (timestamp_now >= it->walltime_expiration) {
       return_tds.push_back(*it);
       it = pending_tds.erase(it);
     } else if (check_td_readout_length(*it)) { // Also pass on TDs with (too) long readout window

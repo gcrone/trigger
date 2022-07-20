@@ -131,7 +131,6 @@ private:
   int64_t m_buffer_timeout;
   int64_t m_td_readout_limit;
   std::atomic<bool> m_send_timed_out_tds;
-  int64_t m_timestamp_now;
   int m_earliest_tc_index;
   int get_earliest_tc_index(const PendingTD& pending_td);
 
