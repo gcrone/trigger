@@ -13,9 +13,9 @@ moo.otypes.load_types('trigger/triggerprimitivemaker.jsonnet')
 # Import new types
 import dunedaq.trigger.triggerprimitivemaker as tpm
 
-from appfwk.app import App, ModuleGraph
-from appfwk.daqmodule import DAQModule
-from appfwk.conf_utils import Direction, Connection
+from daqconf.core.app import App, ModuleGraph
+from daqconf.core.daqmodule import DAQModule
+from daqconf.core.conf_utils import Direction
 
 def get_replay_app(INPUT_FILES: [str],
                    SLOWDOWN_FACTOR: float):
@@ -40,12 +40,11 @@ def get_replay_app(INPUT_FILES: [str],
                                                    tpset_time_offset=0,
                                                    tpset_time_width=10000,
                                                    clock_frequency_hz=clock_frequency_hz,
-                                                   maximum_wait_time_us=1000,),
-                             connections = {}))
+                                                   maximum_wait_time_us=1000,)))
 
     mgraph = ModuleGraph(modules)
     for istream in range(n_streams):
-        mgraph.add_endpoint(f"tp_output{istream}", f"tpm.output{istream}", Direction.OUT)
+        mgraph.add_endpoint(f"tpsets_ru{istream}_link0", f"tpm.output{istream}", Direction.OUT, topic=["TPSets"])
 
     return App(modulegraph=mgraph, host="localhost", name="ReplayApp")
 
