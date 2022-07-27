@@ -90,6 +90,7 @@ def cli(slowdown_factor, input_file, trigger_activity_plugin, trigger_activity_c
         # TRIGGER_WINDOW_BEFORE_TICKS = trigger_window_before_ticks,
         # TRIGGER_WINDOW_AFTER_TICKS = trigger_window_after_ticks,
         # HSI_TRIGGER_TYPE_PASSTHROUGH = hsi_trigger_type_passthrough,
+        USE_CHANNEL_FILTER = False,
         # CHANNEL_MAP_NAME = tpg_channel_map,
         # DATA_REQUEST_TIMEOUT=trigger_data_request_timeout,
         HOST="localhost",
