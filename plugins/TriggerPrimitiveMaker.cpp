@@ -36,7 +36,7 @@ TriggerPrimitiveMaker::TriggerPrimitiveMaker(const std::string& name)
   // clang-format off
   register_command("conf",  &TriggerPrimitiveMaker::do_configure);
   register_command("start", &TriggerPrimitiveMaker::do_start);
-  register_command("stop",  &TriggerPrimitiveMaker::do_stop);
+  register_command("stop_trigger_sources",  &TriggerPrimitiveMaker::do_stop);
   register_command("scrap", &TriggerPrimitiveMaker::do_scrap);
   // clang-format on
 }
@@ -257,8 +257,8 @@ TriggerPrimitiveMaker::do_work(std::atomic<bool>& running_flag,
       ++generated_count;
       generated_tp_count += tpset.objects.size();
       try {
-          TPSet tpset_copy(tpset);
-        tpset_sink->send(std::move(tpset_copy), m_queue_timeout);
+        TPSet tpset_copy(tpset);
+        tpset_sink->send(std::move(tpset_copy), m_queue_timeout, "TPSets");
       } catch (const dunedaq::iomanager::TimeoutExpired& e) {
         ers::warning(e);
         ++push_failed_count;
