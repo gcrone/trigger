@@ -36,7 +36,7 @@ TriggerPrimitiveMaker::TriggerPrimitiveMaker(const std::string& name)
   // clang-format off
   register_command("conf",  &TriggerPrimitiveMaker::do_configure);
   register_command("start", &TriggerPrimitiveMaker::do_start);
-  register_command("stop",  &TriggerPrimitiveMaker::do_stop);
+  register_command("stop_trigger_sources",  &TriggerPrimitiveMaker::do_stop);
   register_command("scrap", &TriggerPrimitiveMaker::do_scrap);
   // clang-format on
 }
