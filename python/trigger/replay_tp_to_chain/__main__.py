@@ -21,8 +21,9 @@ import click
 @click.option('--trigger-activity-config', default='dict(prescale=100)', help="Trigger activity algorithm config (string containing python dictionary)")
 @click.option('--trigger-candidate-plugin', default='TriggerCandidateMakerPrescalePlugin', help="Trigger candidate algorithm plugin")
 @click.option('--trigger-candidate-config', default='dict(prescale=100)', help="Trigger candidate algorithm config (string containing python dictionary)")
+@click.option('-l', '--number-of-loops', default='-1', help="Number of times to loop over the input files (-1 for infinite)")
 @click.argument('json_dir', type=click.Path())
-def cli(slowdown_factor, input_file, trigger_activity_plugin, trigger_activity_config, trigger_candidate_plugin, trigger_candidate_config, json_dir):
+def cli(slowdown_factor, input_file, trigger_activity_plugin, trigger_activity_config, trigger_candidate_plugin, trigger_candidate_config, number_of_loops, json_dir):
     """
       JSON_DIR: Json file output folder
     """
@@ -45,7 +46,8 @@ def cli(slowdown_factor, input_file, trigger_activity_plugin, trigger_activity_c
     
     the_system.apps["replay"] = get_replay_app(
         INPUT_FILES = input_file,
-        SLOWDOWN_FACTOR = slowdown_factor
+        SLOWDOWN_FACTOR = slowdown_factor,
+        NUMBER_OF_LOOPS = number_of_loops
     )
 
     the_system.apps["dataflow0"] = get_dataflow_app(

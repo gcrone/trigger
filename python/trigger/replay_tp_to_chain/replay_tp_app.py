@@ -4,7 +4,6 @@ import moo.io
 moo.io.default_load_path = get_moo_model_path()
 
 from pprint import pprint
-pprint(moo.io.default_load_path)
 # Load configuration types
 import moo.otypes
 
@@ -18,7 +17,8 @@ from daqconf.core.daqmodule import DAQModule
 from daqconf.core.conf_utils import Direction
 
 def get_replay_app(INPUT_FILES: [str],
-                   SLOWDOWN_FACTOR: float):
+                   SLOWDOWN_FACTOR: float,
+                   NUMBER_OF_LOOPS: int):
 
     clock_frequency_hz = 50_000_000 / SLOWDOWN_FACTOR
     modules = []
@@ -36,7 +36,7 @@ def get_replay_app(INPUT_FILES: [str],
     modules.append(DAQModule(name = "tpm",
                              plugin = "TriggerPrimitiveMaker",
                              conf = tpm.ConfParams(tp_streams = tp_streams,
-                                                   number_of_loops=-1, # Infinite
+                                                   number_of_loops=NUMBER_OF_LOOPS,
                                                    tpset_time_offset=0,
                                                    tpset_time_width=10000,
                                                    clock_frequency_hz=clock_frequency_hz,
