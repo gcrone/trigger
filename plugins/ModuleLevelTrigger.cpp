@@ -132,10 +132,7 @@ void
 ModuleLevelTrigger::do_stop(const nlohmann::json& /*stopobj*/)
 {
   // flush all pending TDs at run stop
-  // TODO: check this works.
-  for (PendingTD ready_td : m_pending_tds) {
-    call_tc_decision(ready_td, true);
-  }
+  flush_td_vectors();
 
   m_running_flag.store(false);
   m_send_trigger_decisions_thread.join();
@@ -289,12 +286,10 @@ ModuleLevelTrigger::send_trigger_decisions()
           TLOG_DEBUG(3) << "overlapping previous TD, dropping!";
         } else {
           call_tc_decision(*it);
-          add_td(*it);
           ++it;
         }
       } else {
         call_tc_decision(*it);
-        add_td(*it);
         ++it;
       }
     }
@@ -340,6 +335,7 @@ ModuleLevelTrigger::call_tc_decision(const ModuleLevelTrigger::PendingTD& pendin
       m_td_sent_count++;
       m_td_sent_tc_count += pending_td.contributing_tcs.size();
       m_last_trigger_number++;
+      add_td(pending_td);
     } catch (const ers::Issue& e) {
       ers::error(e);
       TLOG_DEBUG(1) << "The network is misbehaving: it accepted TD but the send failed for "
@@ -477,6 +473,15 @@ ModuleLevelTrigger::check_td_readout_length(const PendingTD& pending_td)
                   << ", sending immediate TD!";
   }
   return td_too_long;
+}
+
+void
+ModuleLevelTrigger::flush_td_vectors()
+{
+  TLOG_DEBUG(3) << "Flushing TDs. Size: " << m_pending_tds.size();
+  for (PendingTD pending_td : m_pending_tds) {
+    call_tc_decision(pending_td, true);
+  }
 }
 
 void

@@ -127,6 +127,7 @@ private:
   bool check_overlap_td(const PendingTD& pending_td);
   bool check_td_readout_length(const PendingTD&);
   void clear_td_vectors();
+  void flush_td_vectors();
   std::vector <PendingTD> get_ready_tds(std::vector <PendingTD>& pending_tds);
   int64_t m_buffer_timeout;
   int64_t m_td_readout_limit;
