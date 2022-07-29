@@ -73,6 +73,8 @@ ModuleLevelTrigger::get_info(opmonlib::InfoCollector& ci, int /*level*/)
   i.td_paused_tc_count = m_td_paused_tc_count.load();
   i.td_dropped_count = m_td_dropped_count.load();
   i.td_dropped_tc_count = m_td_dropped_tc_count.load();
+  i.td_cleared_count = m_td_cleared_count.load();
+  i.td_cleared_tc_count = m_td_cleared_tc_count.load();
   i.td_total_count = m_td_total_count.load();
 
   if (m_livetime_counter.get() != nullptr) {
@@ -242,6 +244,8 @@ ModuleLevelTrigger::send_trigger_decisions()
   m_td_paused_tc_count.store(0);
   m_td_dropped_count.store(0);
   m_td_dropped_tc_count.store(0);
+  m_td_cleared_count.store(0);
+  m_td_cleared_tc_count.store(0);
   m_td_total_count.store(0);
   m_lc_kLive.store(0);
   m_lc_kPaused.store(0);
@@ -267,7 +271,8 @@ ModuleLevelTrigger::send_trigger_decisions()
 
     std::lock_guard<std::mutex> lock(m_td_vector_mutex);
     auto ready_tds = get_ready_tds(m_pending_tds);
-    TLOG_DEBUG(3) << "ready tds: " << ready_tds.size() << ", updated pending tds: " << m_pending_tds.size() << ", sent tds: " << m_sent_tds.size();
+    TLOG_DEBUG(3) << "ready tds: " << ready_tds.size() << ", updated pending tds: " << m_pending_tds.size()
+                  << ", sent tds: " << m_sent_tds.size();
 
     for (std::vector<PendingTD>::iterator it = ready_tds.begin(); it != ready_tds.end();) {
       if (check_overlap_td(*it)) {
@@ -302,7 +307,8 @@ ModuleLevelTrigger::send_trigger_decisions()
          << m_td_sent_tc_count.load() << " TCs. " << m_td_paused_count.load() << " TDs (" << m_td_paused_tc_count.load()
          << " TCs) were created during pause, and " << m_td_inhibited_count.load() << " TDs ("
          << m_td_inhibited_tc_count.load() << " TCs) were inhibited. " << m_td_dropped_count.load() << " TDs ("
-         << m_td_dropped_tc_count.load() << " TCs) were dropped.";
+         << m_td_dropped_tc_count.load() << " TCs) were dropped. " << m_td_cleared_count.load() << " TDs ("
+         << m_td_cleared_tc_count.load() << " TCs) were cleared.";
 
   m_lc_kLive_count = m_livetime_counter->get_time(LivetimeCounter::State::kLive);
   m_lc_kPaused_count = m_livetime_counter->get_time(LivetimeCounter::State::kPaused);
@@ -364,7 +370,7 @@ ModuleLevelTrigger::add_tc(const triggeralgs::TriggerCandidate& tc)
 {
   bool added_to_existing = false;
   int64_t tc_wallclock_arrived =
-    std::chrono::duration_cast<std::chrono::milliseconds>(system_clock::now().time_since_epoch()).count();
+    std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
 
   for (std::vector<PendingTD>::iterator it = m_pending_tds.begin(); it != m_pending_tds.end();) {
     if (check_overlap(tc, *it)) {
@@ -430,7 +436,8 @@ ModuleLevelTrigger::get_ready_tds(std::vector<PendingTD>& pending_tds)
   std::vector<PendingTD> return_tds;
   for (std::vector<PendingTD>::iterator it = pending_tds.begin(); it != pending_tds.end();) {
     auto timestamp_now =
-      std::chrono::duration_cast<std::chrono::milliseconds>(system_clock::now().time_since_epoch()).count();
+      std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch())
+        .count();
     if (timestamp_now >= it->walltime_expiration) {
       return_tds.push_back(*it);
       it = pending_tds.erase(it);
@@ -479,6 +486,7 @@ void
 ModuleLevelTrigger::flush_td_vectors()
 {
   TLOG_DEBUG(3) << "Flushing TDs. Size: " << m_pending_tds.size();
+  std::lock_guard<std::mutex> lock(m_td_vector_mutex);
   for (PendingTD pending_td : m_pending_tds) {
     call_tc_decision(pending_td, true);
   }
@@ -487,13 +495,15 @@ ModuleLevelTrigger::flush_td_vectors()
 void
 ModuleLevelTrigger::clear_td_vectors()
 {
-  TLOG_DEBUG(3) << "Starting cleanup";
   std::lock_guard<std::mutex> lock(m_td_vector_mutex);
   TLOG_DEBUG(1) << "clear_td_vectors() clearing " << m_pending_tds.size() << " pending TDs and " << m_sent_tds.size()
                 << " sent TDs";
+  m_td_cleared_count += m_pending_tds.size();
+  for (PendingTD pending_td : m_pending_tds) {
+    m_td_cleared_tc_count += pending_td.contributing_tcs.size();
+  }
   m_pending_tds.clear();
   m_sent_tds.clear();
-  TLOG_DEBUG(3) << "Ending cleanup";
 }
 
 void
