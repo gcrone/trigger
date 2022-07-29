@@ -14,6 +14,7 @@
 #include <vector>
 #include <functional>
 #include <unordered_map>
+#include <stdexcept>
 
 namespace zipper {
 

@@ -14,6 +14,7 @@
 #include <atomic>
 #include <set>
 #include <vector>
+#include <cstddef>
 
 namespace dunedaq {
 namespace trigger {
