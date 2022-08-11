@@ -159,7 +159,7 @@ TPSetBufferCreator::convert_to_fragment(std::vector<TPSet>& tpsets, dfmessages::
   }
   auto& frag = *ret.get();
 
-  daqdataformats::SourceID sourceid(daqdataformats::SourceID::Subsystem::kTRG, m_conf.element);
+  daqdataformats::SourceID sourceid(daqdataformats::SourceID::Subsystem::kTrigger, m_conf.element);
   daqdataformats::FragmentHeader frag_h;
   frag_h.trigger_number = input_data_request.trigger_number;
   frag_h.trigger_timestamp = input_data_request.trigger_timestamp;
@@ -167,7 +167,7 @@ TPSetBufferCreator::convert_to_fragment(std::vector<TPSet>& tpsets, dfmessages::
   frag_h.window_end = input_data_request.request_information.window_end;
   frag_h.run_number = input_data_request.run_number;
   frag_h.element_id = sourceid;
-  frag_h.fragment_type = (daqdataformats::fragment_type_t)daqdataformats::FragmentType::kTP;
+  frag_h.fragment_type = (daqdataformats::fragment_type_t)daqdataformats::FragmentType::kSW_TriggerPrimitive;
   frag_h.sequence_number = input_data_request.sequence_number;
 
   frag.set_header_fields(frag_h);

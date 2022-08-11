@@ -139,16 +139,16 @@ main(int argc, char** argv)
     std::cout << "-----------------------------------------------------------------------------------" << std::endl;
     std::cout << "Trigger record " << record_id.first << std::endl;
     auto frag_paths =
-      hdf5file.get_fragment_dataset_paths(record_id, dunedaq::daqdataformats::SourceID::Subsystem::kTRG);
+      hdf5file.get_fragment_dataset_paths(record_id, dunedaq::daqdataformats::SourceID::Subsystem::kTrigger);
     for (auto const& frag_path : frag_paths) {
       auto frag_ptr = hdf5file.get_frag_ptr(frag_path);
-      if (frag_ptr->get_fragment_type() == dunedaq::daqdataformats::FragmentType::kTP) {
+      if (frag_ptr->get_fragment_type() == dunedaq::daqdataformats::FragmentType::kSW_TriggerPrimitive) {
         print_tps(std::move(frag_ptr));
       }
-      if (frag_ptr->get_fragment_type() == dunedaq::daqdataformats::FragmentType::kTA) {
+      if (frag_ptr->get_fragment_type() == dunedaq::daqdataformats::FragmentType::kTriggerActivity) {
         print_tas(std::move(frag_ptr));
       }
-      if (frag_ptr->get_fragment_type() == dunedaq::daqdataformats::FragmentType::kTC) {
+      if (frag_ptr->get_fragment_type() == dunedaq::daqdataformats::FragmentType::kTriggerCandidate) {
         print_tcs(std::move(frag_ptr));
       }
 

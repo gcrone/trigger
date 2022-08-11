@@ -327,7 +327,7 @@ public: // NOLINT
         heartbeat.start_time = in.start_time;
         heartbeat.end_time = in.end_time;
         heartbeat.origin = daqdataformats::SourceID(
-          daqdataformats::SourceID::Subsystem::kTRG, m_parent.m_sourceid);
+          daqdataformats::SourceID::Subsystem::kTrigger, m_parent.m_sourceid);
 
         TLOG_DEBUG(4) << "Buffering heartbeat with start time " << heartbeat.start_time;
         m_out_buffer.buffer_heartbeat(heartbeat);
@@ -361,7 +361,7 @@ public: // NOLINT
       m_out_buffer.flush(out);
       out.seqno = m_parent.m_sent_count;
       out.origin = daqdataformats::SourceID(
-          daqdataformats::SourceID::Subsystem::kTRG, m_parent.m_sourceid);
+          daqdataformats::SourceID::Subsystem::kTrigger, m_parent.m_sourceid);
 
       if (out.type == Set<B>::Type::kHeartbeat) {
         TLOG_DEBUG(4) << "Sending heartbeat with start time " << out.start_time;
@@ -403,7 +403,7 @@ public: // NOLINT
       m_out_buffer.flush(out);
       out.seqno = m_parent.m_sent_count;
       out.origin = daqdataformats::SourceID(
-          daqdataformats::SourceID::Subsystem::kTRG, m_parent.m_sourceid);
+          daqdataformats::SourceID::Subsystem::kTrigger, m_parent.m_sourceid);
 
       if (out.type == Set<B>::Type::kHeartbeat) {
         if(!drop) {

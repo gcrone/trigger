@@ -20,9 +20,9 @@
 #include "trigger/Issues.hpp"
 
 #include "appfwk/DAQModule.hpp"
-#include "daqdataformats/SourceID.hpp"
 #include "detdataformats/trigger/Types.hpp"
 #include "detdataformats/trigger/TriggerCandidateData.hpp"
+#include "daqdataformats/SourceID.hpp"
 #include "dfmessages/TimeSync.hpp"
 #include "dfmessages/TriggerDecision.hpp"
 #include "dfmessages/TriggerDecisionToken.hpp"

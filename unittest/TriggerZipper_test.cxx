@@ -34,7 +34,7 @@ BOOST_AUTO_TEST_SUITE(BOOST_TEST_MODULE)
 BOOST_AUTO_TEST_CASE(TPSet_GeoID_Init_Subsystem_Is_DataSelection)
 {
   trigger::TPSet tpset;
-  BOOST_CHECK_EQUAL(tpset.origin.subsystem, daqdataformats::SourceID::Subsystem::kTRG);
+  BOOST_CHECK_EQUAL(tpset.origin.subsystem, daqdataformats::SourceID::Subsystem::kTrigger);
 }
 
 BOOST_AUTO_TEST_CASE(ZipperStreamIDFromGeoID)

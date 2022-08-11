@@ -66,7 +66,7 @@ private:
   daqdataformats::run_number_t m_run_number{ daqdataformats::TypeDefaults::s_invalid_run_number };
 
   daqdataformats::SourceID m_sourceid{
-    daqdataformats::SourceID::Subsystem::kTRG,
+    daqdataformats::SourceID::Subsystem::kTrigger,
     daqdataformats::SourceID::s_invalid_id };
   // Opmon variables
   using metric_counter_type = decltype(faketpcreatorheartbeatmakerinfo::Info::tpset_received_count);

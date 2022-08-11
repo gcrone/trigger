@@ -58,7 +58,7 @@ main(int argc, char** argv)
 
       auto const& comp_sourceid = trigger_records[trigger_number].header->at(ic).component;
 
-      if(comp_sourceid.subsystem != dunedaq::daqdataformats::SourceID::Subsystem::kTRG)
+      if(comp_sourceid.subsystem != dunedaq::daqdataformats::SourceID::Subsystem::kTrigger)
 	continue;
 
       trigger_records[trigger_number].fragments.push_back(decoder.get_frag_ptr(trigger_number,seq_number, comp_sourceid));
@@ -82,7 +82,7 @@ main(int argc, char** argv)
     dunedaq::daqdataformats::timestamp_t window_begin = 0, window_end = 0;
     for (size_t i = 0; i < n_requests; ++i) {
       auto request = record.header->at(i);
-      if (request.component.subsystem == dunedaq::daqdataformats::SourceID::Subsystem::kTRG) {
+      if (request.component.subsystem == dunedaq::daqdataformats::SourceID::Subsystem::kTrigger) {
         window_begin = request.window_begin;
         window_end = request.window_end;
       }
