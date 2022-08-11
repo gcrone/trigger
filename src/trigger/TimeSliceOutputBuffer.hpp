@@ -54,6 +54,7 @@ public:
     , m_next_window_start(0)
     , m_buffer_time(buffer_time)
     , m_window_time(window_time)
+    , m_largest_time(0)
   {}
 
   // Add a new vector<T> to the buffer.

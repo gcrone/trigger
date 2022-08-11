@@ -157,6 +157,16 @@ ERS_DECLARE_ISSUE_BASE(trigger,
                        ((std::bitset<16>)trigger_type))
 
 ERS_DECLARE_ISSUE_BASE(trigger,
+                       TCOutOfTimeout,
+                       appfwk::GeneralDAQModuleIssue,
+                       "TC of type " << tc_type << ", timestamp " << tc_timestamp << " overlaps with previous TD readout window: [" << td_start << ", " << td_end << "]",
+                       ((std::string)name),
+                       ((int)tc_type)
+                       ((triggeralgs::timestamp_t)tc_timestamp)
+                       ((triggeralgs::timestamp_t)td_start)
+                       ((triggeralgs::timestamp_t)td_end))
+
+ERS_DECLARE_ISSUE_BASE(trigger,
                        InvalidHSIEventRunNumber,
                        appfwk::GeneralDAQModuleIssue,
                        "An invalid run number was received in an HSIEvent, "

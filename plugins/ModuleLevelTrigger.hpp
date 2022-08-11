@@ -17,9 +17,12 @@
 #include "trigger/LivetimeCounter.hpp"
 #include "trigger/TokenManager.hpp"
 #include "trigger/moduleleveltriggerinfo/InfoNljs.hpp"
+#include "trigger/Issues.hpp"
 
 #include "appfwk/DAQModule.hpp"
 #include "daqdataformats/SourceID.hpp"
+#include "detdataformats/trigger/Types.hpp"
+#include "detdataformats/trigger/TriggerCandidateData.hpp"
 #include "dfmessages/TimeSync.hpp"
 #include "dfmessages/TriggerDecision.hpp"
 #include "dfmessages/TriggerDecisionToken.hpp"
@@ -33,6 +36,7 @@
 #include <set>
 #include <string>
 #include <vector>
+#include <map>
 
 namespace dunedaq {
 
@@ -72,10 +76,6 @@ private:
   void send_trigger_decisions();
   std::thread m_send_trigger_decisions_thread;
 
-  // Create the next trigger decision
-  dfmessages::TriggerDecision create_decision(const triggeralgs::TriggerCandidate& tc);
-  dfmessages::trigger_type_t m_trigger_type_shifted;
-
   void dfo_busy_callback(dfmessages::TriggerInhibit& inhibit);
 
   // Queue sources and sinks
@@ -109,14 +109,52 @@ private:
   LivetimeCounter::state_time_t m_lc_kDead_count;
   LivetimeCounter::state_time_t m_lc_deadtime;
 
+  // New buffering
+  struct PendingTD {
+    std::vector <triggeralgs::TriggerCandidate> contributing_tcs;
+    triggeralgs::timestamp_t readout_start;
+    triggeralgs::timestamp_t readout_end;
+    int64_t walltime_expiration;
+  };
+  std::vector <PendingTD> m_pending_tds;
+  std::vector <PendingTD> m_sent_tds;
+  std::mutex m_td_vector_mutex;
+  
+  void add_tc(const triggeralgs::TriggerCandidate& tc);
+  void add_td(const PendingTD& pending_td);
+  void call_tc_decision(const PendingTD& pending_td, bool override_flag=false);
+  bool check_overlap(const triggeralgs::TriggerCandidate& tc, const PendingTD& pending_td);
+  bool check_overlap_td(const PendingTD& pending_td);
+  bool check_td_readout_length(const PendingTD&);
+  void clear_td_vectors();
+  void flush_td_vectors();
+  std::vector <PendingTD> get_ready_tds(std::vector <PendingTD>& pending_tds);
+  int64_t m_buffer_timeout;
+  int64_t m_td_readout_limit;
+  std::atomic<bool> m_send_timed_out_tds;
+  int m_earliest_tc_index;
+  int get_earliest_tc_index(const PendingTD& pending_td);
+
+  // Create the next trigger decision
+  dfmessages::TriggerDecision create_decision(const PendingTD& pending_td);
+  dfmessages::trigger_type_t m_trigger_type_shifted;
+
   // Opmon variables
   using metric_counter_type = decltype(moduleleveltriggerinfo::Info::tc_received_count);
   std::atomic<metric_counter_type> m_tc_received_count{ 0 };
   std::atomic<metric_counter_type> m_td_sent_count{ 0 };
+  std::atomic<metric_counter_type> m_td_sent_tc_count{ 0 };
   std::atomic<metric_counter_type> m_td_inhibited_count{ 0 };
+  std::atomic<metric_counter_type> m_td_inhibited_tc_count{ 0 };
   std::atomic<metric_counter_type> m_td_paused_count{ 0 };
+  std::atomic<metric_counter_type> m_td_paused_tc_count{ 0 };
+  std::atomic<metric_counter_type> m_td_dropped_count{ 0 };
+  std::atomic<metric_counter_type> m_td_dropped_tc_count{ 0 };
+  std::atomic<metric_counter_type> m_td_cleared_count{ 0 };
+  std::atomic<metric_counter_type> m_td_cleared_tc_count{ 0 };
   std::atomic<metric_counter_type> m_td_total_count{ 0 };
   std::atomic<metric_counter_type> m_td_queue_timeout_expired_err_count{ 0 };
+  std::atomic<metric_counter_type> m_td_queue_timeout_expired_err_tc_count{ 0 };
   std::atomic<metric_counter_type> m_lc_kLive{ 0 };
   std::atomic<metric_counter_type> m_lc_kPaused{ 0 };
   std::atomic<metric_counter_type> m_lc_kDead{ 0 };
