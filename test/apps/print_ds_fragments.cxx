@@ -42,7 +42,7 @@ print_tps(std::unique_ptr<dunedaq::daqdataformats::Fragment>&& frag, size_t offs
   size_t remainder = payload_size % sizeof(TriggerPrimitive);
   assert(remainder == 0);
   const TriggerPrimitive* prim = reinterpret_cast<TriggerPrimitive*>(frag->get_data());
-  std::cout << "Trigger primitives for " << frag->get_element_id() << std::endl;
+  std::cout << "Trigger primitives for SourceID [" << frag->get_element_id() << "]" << std::endl;
   for (size_t i = 0; i < n_tps; ++i) {
     print_tp(*prim, offset);
     ++prim;
@@ -67,7 +67,7 @@ print_tas(std::unique_ptr<dunedaq::daqdataformats::Fragment>&& frag)
 {
   size_t payload_size = frag->get_size() - sizeof(dunedaq::daqdataformats::FragmentHeader);
 
-  std::cout << "Trigger activities for " << frag->get_element_id() << std::endl;
+  std::cout << "Trigger activities for SourceID [" << frag->get_element_id() << "]" << std::endl;
   // The fragment contains a number of variable-sized TAs stored
   // contiguously so we can't calculate the number of TAs a priori. We
   // have to do this pointer arithmetic business while looping over
@@ -106,7 +106,7 @@ print_tcs(std::unique_ptr<dunedaq::daqdataformats::Fragment>&& frag)
 {
   size_t payload_size = frag->get_size() - sizeof(dunedaq::daqdataformats::FragmentHeader);
 
-  std::cout << "Trigger candidates for " << frag->get_element_id() << std::endl;
+  std::cout << "Trigger candidates for SourceID [" << frag->get_element_id() << "]" << std::endl;
   // The fragment contains a number of variable-sized TCs stored
   // contiguously so we can't calculate the number of TCs a priori. We
   // have to do this pointer arithmetic business while looping over
