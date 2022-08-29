@@ -46,13 +46,14 @@ main(int argc, char** argv)
 
   dunedaq::hdf5libs::HDF5RawDataFile decoder(filename);
 
-  auto trigger_record_numbers = decoder.get_all_trigger_record_numbers();
+  auto trigger_record_ids = decoder.get_all_trigger_record_ids();
   
   // Populate the map with the TRHs and DS fragments
-  for (auto trigger_number : trigger_record_numbers){
+  for (auto trigger_record_id : trigger_record_ids){
+    auto trigger_number = trigger_record_id.first;
 
     trigger_records[trigger_number].header = decoder.get_trh_ptr(trigger_number);
-    auto seq_number = trigger_records[trigger_number].header->get_sequence_number();
+    auto seq_number = trigger_record_id.second;
     
     for(size_t ic=0; ic < trigger_records[trigger_number].header->get_num_requested_components(); ++ic){
 
@@ -108,7 +109,7 @@ main(int argc, char** argv)
     }
   }
   if (n_failures > 0) {
-    std::cout << "Found " << n_failures << " TPs outside window in " << trigger_record_numbers.size() << " trigger records" << std::endl;
+    std::cout << "Found " << n_failures << " TPs outside window in " << trigger_record_ids.size() << " trigger records" << std::endl;
   } else {
     std::cout << "Test passed" << std::endl;
   }
