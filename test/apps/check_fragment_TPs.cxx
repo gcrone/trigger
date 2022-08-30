@@ -41,27 +41,28 @@ main(int argc, char** argv)
   std::map<int, MyTriggerRecord> trigger_records;
 
   std::regex header_regex("^//TriggerRecord([0-9]+)/TriggerRecordHeader$", std::regex::extended);
-  std::regex trigger_fragment_regex("^//TriggerRecord([0-9]+)/Trigger/Region[0-9]+/Element[0-9]+$",
+  std::regex trigger_fragment_regex("^//TriggerRecord([0-9]+)/Trigger/Element[0-9]+$",
                                     std::regex::extended);
 
   dunedaq::hdf5libs::HDF5RawDataFile decoder(filename);
 
-  auto trigger_record_numbers = decoder.get_all_trigger_record_numbers();
+  auto trigger_record_ids = decoder.get_all_trigger_record_ids();
   
   // Populate the map with the TRHs and DS fragments
-  for (auto trigger_number : trigger_record_numbers){
+  for (auto trigger_record_id : trigger_record_ids){
+    auto trigger_number = trigger_record_id.first;
 
     trigger_records[trigger_number].header = decoder.get_trh_ptr(trigger_number);
-    auto seq_number = trigger_records[trigger_number].header->get_sequence_number();
+    auto seq_number = trigger_record_id.second;
     
     for(size_t ic=0; ic < trigger_records[trigger_number].header->get_num_requested_components(); ++ic){
 
-      auto const& comp_geoid = trigger_records[trigger_number].header->at(ic).component;
+      auto const& comp_sourceid = trigger_records[trigger_number].header->at(ic).component;
 
-      if(comp_geoid.system_type != dunedaq::daqdataformats::GeoID::SystemType::kDataSelection)
+      if(comp_sourceid.subsystem != dunedaq::daqdataformats::SourceID::Subsystem::kTrigger)
 	continue;
 
-      trigger_records[trigger_number].fragments.push_back(decoder.get_frag_ptr(trigger_number,seq_number,comp_geoid));
+      trigger_records[trigger_number].fragments.push_back(decoder.get_frag_ptr(trigger_number,seq_number, comp_sourceid));
     }
 
   }
@@ -82,7 +83,7 @@ main(int argc, char** argv)
     dunedaq::daqdataformats::timestamp_t window_begin = 0, window_end = 0;
     for (size_t i = 0; i < n_requests; ++i) {
       auto request = record.header->at(i);
-      if (request.component.system_type == dunedaq::daqdataformats::GeoID::SystemType::kDataSelection) {
+      if (request.component.subsystem == dunedaq::daqdataformats::SourceID::Subsystem::kTrigger) {
         window_begin = request.window_begin;
         window_end = request.window_end;
       }
@@ -108,7 +109,7 @@ main(int argc, char** argv)
     }
   }
   if (n_failures > 0) {
-    std::cout << "Found " << n_failures << " TPs outside window in " << trigger_record_numbers.size() << " trigger records" << std::endl;
+    std::cout << "Found " << n_failures << " TPs outside window in " << trigger_record_ids.size() << " trigger records" << std::endl;
   } else {
     std::cout << "Test passed" << std::endl;
   }

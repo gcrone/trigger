@@ -9,7 +9,7 @@
 #include "TPBuffer.hpp"
 
 #include "appfwk/DAQModuleHelper.hpp"
-#include "daqdataformats/GeoID.hpp"
+#include "daqdataformats/SourceID.hpp"
 
 #include <string>
 

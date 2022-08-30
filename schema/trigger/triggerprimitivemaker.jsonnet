@@ -8,15 +8,12 @@ local types = {
     rows: s.number("rows", dtype="u8", doc="Number of rows"),
     freq: s.number("freq", dtype="u8", doc="A frequency"),
     microseconds: s.number("microseconds", dtype="u8", doc="Microseconds"),
-    region : s.number("region", "u2", doc="Region ID for GeoID"),
     element : s.number("element", "u4", doc="Element ID for GeoID"),
     output_name: s.string("output_name", doc="An output sink name"),
   
     tpstream: s.record("TPStream", [
         s.field("filename", self.pathname,
                 doc="File name of input file for trigger primitives"),
-        s.field("region_id", self.region, 0,
-                doc="Detector region ID to be reported as the source of the TPs"),
         s.field("element_id", self.element, 0,
                 doc="Detector element ID to be reported as the source of the TPs"),
         s.field("output_sink_name", self.output_name,

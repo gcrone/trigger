@@ -16,7 +16,7 @@
 
 #include "appfwk/DAQModule.hpp"
 #include "appfwk/DAQModuleHelper.hpp"
-#include "daqdataformats/GeoID.hpp"
+#include "daqdataformats/SourceID.hpp"
 #include "detdataformats/trigger/Types.hpp"
 #include "iomanager/IOManager.hpp"
 #include "iomanager/Receiver.hpp"
@@ -53,8 +53,7 @@ public:
     , m_output_queue(nullptr)
     , m_queue_timeout(100)
     , m_algorithm_name("[uninitialized]")
-    , m_geoid_region_id(dunedaq::daqdataformats::GeoID::s_invalid_region_id)
-    , m_geoid_element_id(dunedaq::daqdataformats::GeoID::s_invalid_element_id)
+    , m_sourceid(dunedaq::daqdataformats::SourceID::s_invalid_id)
     , m_buffer_time(0)
     , m_window_time(625000)
     , worker(*this) // should be last; may use other members
@@ -81,10 +80,9 @@ protected:
   void set_algorithm_name(const std::string& name) { m_algorithm_name = name; }
 
   // Only applies to makers that output Set<B>
-  void set_geoid(uint16_t region_id, uint32_t element_id) // NOLINT(build/unsigned)
+  void set_sourceid(uint32_t element_id) // NOLINT(build/unsigned)
   {
-    m_geoid_region_id = region_id;
-    m_geoid_element_id = element_id;
+    m_sourceid = element_id;
   }
 
   // Only applies to makers that output Set<B>
@@ -110,8 +108,7 @@ private:
 
   std::string m_algorithm_name;
 
-  uint16_t m_geoid_region_id;  // NOLINT(build/unsigned)
-  uint32_t m_geoid_element_id; // NOLINT(build/unsigned)
+  uint32_t m_sourceid; // NOLINT(build/unsigned)
 
   daqdataformats::timestamp_t m_buffer_time;
   daqdataformats::timestamp_t m_window_time;
@@ -329,8 +326,8 @@ public: // NOLINT
         heartbeat.type = Set<B>::Type::kHeartbeat;
         heartbeat.start_time = in.start_time;
         heartbeat.end_time = in.end_time;
-        heartbeat.origin = daqdataformats::GeoID(
-          daqdataformats::GeoID::SystemType::kDataSelection, m_parent.m_geoid_region_id, m_parent.m_geoid_element_id);
+        heartbeat.origin = daqdataformats::SourceID(
+          daqdataformats::SourceID::Subsystem::kTrigger, m_parent.m_sourceid);
 
         TLOG_DEBUG(4) << "Buffering heartbeat with start time " << heartbeat.start_time;
         m_out_buffer.buffer_heartbeat(heartbeat);
@@ -363,8 +360,8 @@ public: // NOLINT
       Set<B> out;
       m_out_buffer.flush(out);
       out.seqno = m_parent.m_sent_count;
-      out.origin = daqdataformats::GeoID(
-          daqdataformats::GeoID::SystemType::kDataSelection, m_parent.m_geoid_region_id, m_parent.m_geoid_element_id);
+      out.origin = daqdataformats::SourceID(
+          daqdataformats::SourceID::Subsystem::kTrigger, m_parent.m_sourceid);
 
       if (out.type == Set<B>::Type::kHeartbeat) {
         TLOG_DEBUG(4) << "Sending heartbeat with start time " << out.start_time;
@@ -405,8 +402,8 @@ public: // NOLINT
       Set<B> out;
       m_out_buffer.flush(out);
       out.seqno = m_parent.m_sent_count;
-      out.origin = daqdataformats::GeoID(
-          daqdataformats::GeoID::SystemType::kDataSelection, m_parent.m_geoid_region_id, m_parent.m_geoid_element_id);
+      out.origin = daqdataformats::SourceID(
+          daqdataformats::SourceID::Subsystem::kTrigger, m_parent.m_sourceid);
 
       if (out.type == Set<B>::Type::kHeartbeat) {
         if(!drop) {

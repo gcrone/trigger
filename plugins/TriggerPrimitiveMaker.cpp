@@ -65,7 +65,7 @@ TriggerPrimitiveMaker::do_configure(const nlohmann::json& obj)
     TPStream this_stream;
     this_stream.tpset_sink = get_iom_sender<TPSet>(appfwk::connection_inst(m_init_obj, stream.output_sink_name));
 
-    this_stream.tpsets = read_tpsets(stream.filename, stream.region_id, stream.element_id);
+    this_stream.tpsets = read_tpsets(stream.filename, stream.element_id);
 
     m_earliest_first_tpset_timestamp =
       std::min(m_earliest_first_tpset_timestamp, this_stream.tpsets.front().start_time);
@@ -126,7 +126,7 @@ TriggerPrimitiveMaker::do_scrap(const nlohmann::json& /*args*/)
 }
 
 std::vector<TPSet>
-TriggerPrimitiveMaker::read_tpsets(std::string filename, int region, int element)
+TriggerPrimitiveMaker::read_tpsets(std::string filename, int element)
 {
   std::ifstream file(filename);
   if (!file || file.bad()) {
@@ -161,8 +161,7 @@ TriggerPrimitiveMaker::read_tpsets(std::string filename, int region, int element
         ++seqno;
 
         // 12-Jul-2021, KAB: setting origin fields from configuration
-        tpset.origin.region_id = region;
-        tpset.origin.element_id = element;
+        tpset.origin.id = element;
 
         tpset.type = TPSet::Type::kPayload;
 

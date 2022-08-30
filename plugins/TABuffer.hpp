@@ -102,8 +102,8 @@ private:
     }
 
     //static const constexpr size_t fixed_payload_size = 5568;
-    static const constexpr daqdataformats::GeoID::SystemType system_type = daqdataformats::GeoID::SystemType::kDataSelection;
-    static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kTriggerActivities;
+    static const constexpr daqdataformats::SourceID::Subsystem subsystem = daqdataformats::SourceID::Subsystem::kTrigger;
+    static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kTriggerActivity;
     // No idea what this should really be set to
     static const constexpr uint64_t expected_tick_difference = 16; // NOLINT(build/unsigned)
 

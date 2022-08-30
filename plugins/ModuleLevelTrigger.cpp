@@ -94,7 +94,7 @@ ModuleLevelTrigger::do_configure(const nlohmann::json& confobj)
   m_links.clear();
   for (auto const& link : params.links) {
     m_links.push_back(
-      dfmessages::GeoID{ daqdataformats::GeoID::string_to_system_type(link.system), link.region, link.element });
+      dfmessages::SourceID{ daqdataformats::SourceID::string_to_subsystem(link.subsystem), link.element });
   }
   m_trigger_decision_connection = params.dfo_connection;
   m_inhibit_connection = params.dfo_busy_connection;

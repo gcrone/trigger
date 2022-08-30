@@ -56,7 +56,7 @@ private:
   std::vector<std::unique_ptr<std::thread>> m_threads;
   std::atomic<bool> m_running_flag;
 
-  std::vector<TPSet> read_tpsets(std::string filename, int region, int element);
+  std::vector<TPSet> read_tpsets(std::string filename, int element);
 
   // Configuration
   triggerprimitivemaker::ConfParams m_conf;

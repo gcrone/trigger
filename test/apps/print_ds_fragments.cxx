@@ -12,7 +12,7 @@
 #include "hdf5libs/HDF5RawDataFile.hpp"
 
 #include <daqdataformats/Fragment.hpp>
-#include <daqdataformats/GeoID.hpp>
+#include <daqdataformats/SourceID.hpp>
 #include <daqdataformats/TimeSlice.hpp>
 #include <daqdataformats/TimeSliceHeader.hpp>
 #include <daqdataformats/Types.hpp>
@@ -42,7 +42,7 @@ print_tps(std::unique_ptr<dunedaq::daqdataformats::Fragment>&& frag, size_t offs
   size_t remainder = payload_size % sizeof(TriggerPrimitive);
   assert(remainder == 0);
   const TriggerPrimitive* prim = reinterpret_cast<TriggerPrimitive*>(frag->get_data());
-  std::cout << "Trigger primitives for " << frag->get_element_id() << std::endl;
+  std::cout << "Trigger primitives for SourceID [" << frag->get_element_id() << "]" << std::endl;
   for (size_t i = 0; i < n_tps; ++i) {
     print_tp(*prim, offset);
     ++prim;
@@ -67,7 +67,7 @@ print_tas(std::unique_ptr<dunedaq::daqdataformats::Fragment>&& frag)
 {
   size_t payload_size = frag->get_size() - sizeof(dunedaq::daqdataformats::FragmentHeader);
 
-  std::cout << "Trigger activities for " << frag->get_element_id() << std::endl;
+  std::cout << "Trigger activities for SourceID [" << frag->get_element_id() << "]" << std::endl;
   // The fragment contains a number of variable-sized TAs stored
   // contiguously so we can't calculate the number of TAs a priori. We
   // have to do this pointer arithmetic business while looping over
@@ -106,7 +106,7 @@ print_tcs(std::unique_ptr<dunedaq::daqdataformats::Fragment>&& frag)
 {
   size_t payload_size = frag->get_size() - sizeof(dunedaq::daqdataformats::FragmentHeader);
 
-  std::cout << "Trigger candidates for " << frag->get_element_id() << std::endl;
+  std::cout << "Trigger candidates for SourceID [" << frag->get_element_id() << "]" << std::endl;
   // The fragment contains a number of variable-sized TCs stored
   // contiguously so we can't calculate the number of TCs a priori. We
   // have to do this pointer arithmetic business while looping over
@@ -139,16 +139,16 @@ main(int argc, char** argv)
     std::cout << "-----------------------------------------------------------------------------------" << std::endl;
     std::cout << "Trigger record " << record_id.first << std::endl;
     auto frag_paths =
-      hdf5file.get_fragment_dataset_paths(record_id, dunedaq::daqdataformats::GeoID::SystemType::kDataSelection);
+      hdf5file.get_fragment_dataset_paths(record_id, dunedaq::daqdataformats::SourceID::Subsystem::kTrigger);
     for (auto const& frag_path : frag_paths) {
       auto frag_ptr = hdf5file.get_frag_ptr(frag_path);
-      if (frag_ptr->get_fragment_type() == dunedaq::daqdataformats::FragmentType::kTriggerPrimitives) {
+      if (frag_ptr->get_fragment_type() == dunedaq::daqdataformats::FragmentType::kSW_TriggerPrimitive) {
         print_tps(std::move(frag_ptr));
       }
-      if (frag_ptr->get_fragment_type() == dunedaq::daqdataformats::FragmentType::kTriggerActivities) {
+      if (frag_ptr->get_fragment_type() == dunedaq::daqdataformats::FragmentType::kTriggerActivity) {
         print_tas(std::move(frag_ptr));
       }
-      if (frag_ptr->get_fragment_type() == dunedaq::daqdataformats::FragmentType::kTriggerCandidates) {
+      if (frag_ptr->get_fragment_type() == dunedaq::daqdataformats::FragmentType::kTriggerCandidate) {
         print_tcs(std::move(frag_ptr));
       }
 

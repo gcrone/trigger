@@ -20,9 +20,9 @@
 #include "trigger/Issues.hpp"
 
 #include "appfwk/DAQModule.hpp"
-#include "daqdataformats/GeoID.hpp"
 #include "detdataformats/trigger/Types.hpp"
 #include "detdataformats/trigger/TriggerCandidateData.hpp"
+#include "daqdataformats/SourceID.hpp"
 #include "dfmessages/TimeSync.hpp"
 #include "dfmessages/TriggerDecision.hpp"
 #include "dfmessages/TriggerDecisionToken.hpp"
@@ -82,7 +82,7 @@ private:
   std::shared_ptr<iomanager::ReceiverConcept<triggeralgs::TriggerCandidate>> m_candidate_source;
   std::shared_ptr<iomanager::ReceiverConcept<dfmessages::TriggerInhibit>> m_inhibit_receiver;
 
-  std::vector<dfmessages::GeoID> m_links;
+  std::vector<dfmessages::SourceID> m_links;
 
   int m_repeat_trigger_count{ 1 };
 

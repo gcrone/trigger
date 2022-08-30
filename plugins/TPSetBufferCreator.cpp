@@ -14,7 +14,8 @@
 #include "appfwk/DAQModuleHelper.hpp"
 #include "appfwk/app/Nljs.hpp"
 #include "daqdataformats/FragmentHeader.hpp"
-#include "daqdataformats/GeoID.hpp"
+#include "daqdataformats/SourceID.hpp"
+#include "detdataformats/DetID.hpp"
 #include "iomanager/IOManager.hpp"
 #include "logging/Logging.hpp"
 
@@ -159,16 +160,17 @@ TPSetBufferCreator::convert_to_fragment(std::vector<TPSet>& tpsets, dfmessages::
   }
   auto& frag = *ret.get();
 
-  daqdataformats::GeoID geoid(daqdataformats::GeoID::SystemType::kDataSelection, m_conf.region, m_conf.element);
+  daqdataformats::SourceID sourceid(daqdataformats::SourceID::Subsystem::kTrigger, m_conf.element);
   daqdataformats::FragmentHeader frag_h;
   frag_h.trigger_number = input_data_request.trigger_number;
   frag_h.trigger_timestamp = input_data_request.trigger_timestamp;
   frag_h.window_begin = input_data_request.request_information.window_begin;
   frag_h.window_end = input_data_request.request_information.window_end;
   frag_h.run_number = input_data_request.run_number;
-  frag_h.element_id = geoid;
-  frag_h.fragment_type = (daqdataformats::fragment_type_t)daqdataformats::FragmentType::kTriggerPrimitives;
+  frag_h.element_id = sourceid;
+  frag_h.fragment_type = (daqdataformats::fragment_type_t)daqdataformats::FragmentType::kSW_TriggerPrimitive;
   frag_h.sequence_number = input_data_request.sequence_number;
+  frag_h.detector_id = static_cast<uint16_t>(detdataformats::DetID::Subdetector::kDAQ); // NOLINT(build/unsigned)
 
   frag.set_header_fields(frag_h);
 
