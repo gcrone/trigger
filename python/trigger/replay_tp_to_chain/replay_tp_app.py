@@ -16,6 +16,9 @@ from daqconf.core.app import App, ModuleGraph
 from daqconf.core.daqmodule import DAQModule
 from daqconf.core.conf_utils import Direction
 
+# Trying to fix source ID issues for replay app
+from daqconf.core.sourceid import *
+
 def get_replay_app(INPUT_FILES: [str],
                    SLOWDOWN_FACTOR: float,
                    NUMBER_OF_LOOPS: int):
@@ -26,7 +29,7 @@ def get_replay_app(INPUT_FILES: [str],
     n_streams = len(INPUT_FILES)
 
     tp_streams = [tpm.TPStream(filename=input_file,
-                               region_id = 0,
+                             #  region_id = 0,
                                element_id = istream,
                                output_sink_name = f"output{istream}")
                   for istream,input_file in enumerate(INPUT_FILES)]

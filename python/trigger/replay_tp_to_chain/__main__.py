@@ -1,6 +1,7 @@
 from rich.console import Console
 
 from daqconf.core.system import System
+from daqconf.core.sourceid import *
 
 # Add -h as default help option
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -22,8 +23,9 @@ import click
 @click.option('--trigger-candidate-plugin', default='TriggerCandidateMakerPrescalePlugin', help="Trigger candidate algorithm plugin")
 @click.option('--trigger-candidate-config', default='dict(prescale=100)', help="Trigger candidate algorithm config (string containing python dictionary)")
 @click.option('-l', '--number-of-loops', default='-1', help="Number of times to loop over the input files (-1 for infinite)")
+@click.option('--hardware-map-file', default='./HardwareMap.txt', help="Hardware map file for source ID stuff.")
 @click.argument('json_dir', type=click.Path())
-def cli(slowdown_factor, input_file, trigger_activity_plugin, trigger_activity_config, trigger_candidate_plugin, trigger_candidate_config, number_of_loops, json_dir):
+def cli(slowdown_factor, input_file, trigger_activity_plugin, trigger_activity_config, trigger_candidate_plugin, trigger_candidate_config, number_of_loops, hardware_map_file, json_dir):
     """
       JSON_DIR: Json file output folder
     """
@@ -36,6 +38,35 @@ def cli(slowdown_factor, input_file, trigger_activity_plugin, trigger_activity_c
     from daqconf.apps.trigger_gen import get_trigger_app
     from daqconf.apps.dfo_gen import get_dfo_app
     
+    # Attempt to fix replay app with source ID broker
+    sourceid_broker = SourceIDBroker()
+
+    # Load the hw map file here to extract ru hosts, cards, slr, links, frontend types, sourceIDs and geoIDs
+    # The ru apps are determined by the combinations of hostname and card_id, the SourceID determines the 
+    # DLH (with physical slr+link information), the detId acts as system_type allows to infer the frontend_type
+    hw_map_service = HardwareMapService(hardware_map_file)
+
+    # Get the list of RU processes - required to create instances of TXInfo later
+    dro_infos = hw_map_service.get_all_dro_info()
+  
+    # print("DRO INFOS: ")
+    # print(dro_infos)
+
+    enable_firmware_tpg = False
+    enable_software_tpg = True  # We always want software TPG for replay app
+    
+    sourceid_broker.register_readout_source_ids(dro_infos)
+    tp_mode = get_tpg_mode(enable_firmware_tpg,enable_software_tpg)
+    sourceid_broker.generate_trigger_source_ids(dro_infos, tp_mode)
+    tp_infos = sourceid_broker.get_all_source_ids("Trigger")
+
+    # Alternatively, manually create the tp_infos dictionary and avoid the hardware map altogether.
+    # tp_infos = {'host_trigger': 'np04-srv-001', 'trigger_window_before_ticks': 260000, 
+    #           'trigger_window_after_ticks': 2144, 'hsi_trigger_type_passthrough': True}
+
+    # print("TP INFOS:")
+    # print(tp_infos)
+
     console.log(f"Generating configs")
 
     ru_configs=[{"host": "localhost",
@@ -52,7 +83,7 @@ def cli(slowdown_factor, input_file, trigger_activity_plugin, trigger_activity_c
 
     the_system.apps["dataflow0"] = get_dataflow_app(
         HOSTIDX = 0,
-        OUTPUT_PATH = ".",
+      #  OUTPUT_PATH = ".",
         # OPERATIONAL_ENVIRONMENT = op_env,
         # TPC_REGION_NAME_PREFIX = tpc_region_name_prefix,
         # MAX_FILE_SIZE = max_file_size,
@@ -66,7 +97,7 @@ def cli(slowdown_factor, input_file, trigger_activity_plugin, trigger_activity_c
     )
 
     the_system.apps['dfo'] = get_dfo_app(
-        DF_COUNT = 1,
+      #  DF_COUNT = 1,
         # TOKEN_COUNT = trigemu_token_count,
         # STOP_TIMEOUT = dfo_stop_timeout,
         HOST="localhost",
@@ -74,11 +105,12 @@ def cli(slowdown_factor, input_file, trigger_activity_plugin, trigger_activity_c
     )
 
     the_system.apps['trigger'] = get_trigger_app(
-        SOFTWARE_TPG_ENABLED = True,
-        FIRMWARE_TPG_ENABLED = False,
+      #   SOFTWARE_TPG_ENABLED = True,
+      #  FIRMWARE_TPG_ENABLED = False,
         DATA_RATE_SLOWDOWN_FACTOR = slowdown_factor,
         CLOCK_SPEED_HZ = 50_000_000,
-        RU_CONFIG = ru_configs,
+        TP_CONFIG = tp_infos,             #  <=== Need to fix the building of this tp_infos dictionary
+        # RU_CONFIG = ru_configs,
         ACTIVITY_PLUGIN = trigger_activity_plugin,
         ACTIVITY_CONFIG = eval(trigger_activity_config),
         CANDIDATE_PLUGIN = trigger_candidate_plugin,
