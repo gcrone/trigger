@@ -23,7 +23,7 @@ import click
 @click.option('--trigger-candidate-plugin', default='TriggerCandidateMakerPrescalePlugin', help="Trigger candidate algorithm plugin")
 @click.option('--trigger-candidate-config', default='dict(prescale=100)', help="Trigger candidate algorithm config (string containing python dictionary)")
 @click.option('-l', '--number-of-loops', default='-1', help="Number of times to loop over the input files (-1 for infinite)")
-@click.option('--hardware-map-file', default='./HardwareMap.txt', help="Hardware map file for source ID stuff.")
+@click.option('--hardware-map-file', default='./HardwareMap.txt', help="Hardware map file for new source ID changes.")
 @click.argument('json_dir', type=click.Path())
 def cli(slowdown_factor, input_file, trigger_activity_plugin, trigger_activity_config, trigger_candidate_plugin, trigger_candidate_config, number_of_loops, hardware_map_file, json_dir):
     """
@@ -66,6 +66,13 @@ def cli(slowdown_factor, input_file, trigger_activity_plugin, trigger_activity_c
 
     # print("TP INFOS:")
     # print(tp_infos)
+
+    # We weren't generating TC_SOURCE_ID, which resulted in a key error. Create manually here.
+    tc_infos = TCInfo()
+    tc_infos.ru_count = 0 
+    TC_SOURCE_ID = {"source_id": 0, "conf": tc_infos}
+    # Either append TC_SOURCE_ID to the tp_infos dictionary here, or create in trigger_gen
+    # tp_infos[] = TC_SOURCE_ID
 
     console.log(f"Generating configs")
 
