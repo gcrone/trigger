@@ -38,6 +38,47 @@ def cli(slowdown_factor, input_file, trigger_activity_plugin, trigger_activity_c
     from daqconf.apps.trigger_gen import get_trigger_app
     from daqconf.apps.dfo_gen import get_dfo_app
     
+    console.log(f"Generating configs")
+
+    ru_configs=[{"host": "localhost",
+                 "card_id": 0,
+                 "region_id": i,
+                 "start_channel": 0,
+                 "channel_count": 1} for i in range(len(input_file))]
+    
+    the_system.apps["replay"] = get_replay_app(
+        INPUT_FILES = input_file,
+        SLOWDOWN_FACTOR = slowdown_factor,
+        NUMBER_OF_LOOPS = number_of_loops
+    )
+
+    the_system.apps["dataflow0"] = get_dataflow_app(
+        HOSTIDX = 0,
+      #  OUTPUT_PATH = ".",
+        # OPERATIONAL_ENVIRONMENT = op_env,
+        # TPC_REGION_NAME_PREFIX = tpc_region_name_prefix,
+        # MAX_FILE_SIZE = max_file_size,
+        # MAX_TRIGGER_RECORD_WINDOW = max_trigger_record_window,
+        # MAX_EXPECTED_TR_SEQUENCES = max_expected_tr_sequences,
+        # TOKEN_COUNT = trigemu_token_count,
+        # TRB_TIMEOUT = trigger_record_building_timeout,
+        HOST="localhost",
+        # HAS_DQM=enable_dqm,
+        # DEBUG=debug
+    )
+
+    # get_dfo_app expects the dataflow conf structs to be passed to dfo_gen, consider hard coding here?
+    df_conf = {'dataflow0': {'host_df': 'localhost', 'max_file_size': 4294967296, 'max_trigger_record_window': 0, 'output_paths': ['.'], 'token_count': 9, 'source_id': 0}}
+
+    the_system.apps['dfo'] = get_dfo_app(
+        DF_CONF = df_conf,
+      #  DF_COUNT = 1,
+        # TOKEN_COUNT = trigemu_token_count,
+        # STOP_TIMEOUT = dfo_stop_timeout,
+        HOST="localhost",
+        # DEBUG=debug
+    )
+
     # Attempt to fix replay app with source ID broker
     sourceid_broker = SourceIDBroker()
 
@@ -68,48 +109,11 @@ def cli(slowdown_factor, input_file, trigger_activity_plugin, trigger_activity_c
     # print(tp_infos)
 
     # We weren't generating TC_SOURCE_ID, which resulted in a key error. Create manually here.
-    tc_infos = TCInfo()
-    tc_infos.ru_count = 0 
-    TC_SOURCE_ID = {"source_id": 0, "conf": tc_infos}
+    #tc_infos = TCInfo()
+    #tc_infos.ru_count = 0 
+    #TC_SOURCE_ID = {"source_id": 0, "conf": tc_infos}
     # Either append TC_SOURCE_ID to the tp_infos dictionary here, or create in trigger_gen
     # tp_infos[] = TC_SOURCE_ID
-
-    console.log(f"Generating configs")
-
-    ru_configs=[{"host": "localhost",
-                 "card_id": 0,
-                 "region_id": i,
-                 "start_channel": 0,
-                 "channel_count": 1} for i in range(len(input_file))]
-    
-    the_system.apps["replay"] = get_replay_app(
-        INPUT_FILES = input_file,
-        SLOWDOWN_FACTOR = slowdown_factor,
-        NUMBER_OF_LOOPS = number_of_loops
-    )
-
-    the_system.apps["dataflow0"] = get_dataflow_app(
-        HOSTIDX = 0,
-      #  OUTPUT_PATH = ".",
-        # OPERATIONAL_ENVIRONMENT = op_env,
-        # TPC_REGION_NAME_PREFIX = tpc_region_name_prefix,
-        # MAX_FILE_SIZE = max_file_size,
-        # MAX_TRIGGER_RECORD_WINDOW = max_trigger_record_window,
-        # MAX_EXPECTED_TR_SEQUENCES = max_expected_tr_sequences,
-        # TOKEN_COUNT = trigemu_token_count,
-        # TRB_TIMEOUT = trigger_record_building_timeout,
-        HOST="localhost",
-        # HAS_DQM=enable_dqm,
-        # DEBUG=debug
-    )
-
-    the_system.apps['dfo'] = get_dfo_app(
-      #  DF_COUNT = 1,
-        # TOKEN_COUNT = trigemu_token_count,
-        # STOP_TIMEOUT = dfo_stop_timeout,
-        HOST="localhost",
-        # DEBUG=debug
-    )
 
     the_system.apps['trigger'] = get_trigger_app(
       #   SOFTWARE_TPG_ENABLED = True,
@@ -153,7 +157,7 @@ def cli(slowdown_factor, input_file, trigger_activity_plugin, trigger_activity_c
 
     write_json_files(app_command_datas, system_command_datas, json_dir)
 
-    write_metadata_file(json_dir, "replay_tp_to_chain")
+    write_metadata_file(json_dir, "replay_tp_to_chain", "./daqconf.ini")
 
 if __name__ == '__main__':
 
