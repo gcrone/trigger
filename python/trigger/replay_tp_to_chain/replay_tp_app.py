@@ -47,7 +47,7 @@ def get_replay_app(INPUT_FILES: [str],
 
     mgraph = ModuleGraph(modules)
     for istream in range(n_streams):
-        mgraph.add_endpoint(f"tpsets_ru{istream}_link0", f"tpm.output{istream}", Direction.OUT, topic=["TPSets"])
+        mgraph.add_endpoint(f"tpsets_rulocalhost_{istream}_link0", f"tpm.output{istream}", Direction.OUT, topic=["TPSets"])
 
     return App(modulegraph=mgraph, host="localhost", name="ReplayApp")
 
