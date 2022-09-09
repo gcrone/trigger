@@ -26,13 +26,11 @@ def get_replay_app(INPUT_FILES: [str],
     n_streams = len(INPUT_FILES)
 
     tp_streams = [tpm.TPStream(filename=input_file,
-                               region_id = 0,
+                               # region_id = 0,
                                element_id = istream,
                                output_sink_name = f"output{istream}")
                   for istream,input_file in enumerate(INPUT_FILES)]
 
-    # tpm_connections = { f"output{istream}" : Connection(f"chan_filter{istream}.tpset_source")
-    #                     for istream in range(n_streams) }
     modules.append(DAQModule(name = "tpm",
                              plugin = "TriggerPrimitiveMaker",
                              conf = tpm.ConfParams(tp_streams = tp_streams,
@@ -44,7 +42,7 @@ def get_replay_app(INPUT_FILES: [str],
 
     mgraph = ModuleGraph(modules)
     for istream in range(n_streams):
-        mgraph.add_endpoint(f"tpsets_ru{istream}_link0", f"tpm.output{istream}", Direction.OUT, topic=["TPSets"])
+        mgraph.add_endpoint(f"tpsets_rulocalhost_{istream}_link0", f"tpm.output{istream}", Direction.OUT, topic=["TPSets"])
 
     return App(modulegraph=mgraph, host="localhost", name="ReplayApp")
 

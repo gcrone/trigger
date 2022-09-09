@@ -1,6 +1,9 @@
 from rich.console import Console
 
 from daqconf.core.system import System
+from daqconf.core.sourceid import *
+
+from tempfile import NamedTemporaryFile
 
 # Add -h as default help option
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -38,12 +41,6 @@ def cli(slowdown_factor, input_file, trigger_activity_plugin, trigger_activity_c
     
     console.log(f"Generating configs")
 
-    ru_configs=[{"host": "localhost",
-                 "card_id": 0,
-                 "region_id": i,
-                 "start_channel": 0,
-                 "channel_count": 1} for i in range(len(input_file))]
-    
     the_system.apps["replay"] = get_replay_app(
         INPUT_FILES = input_file,
         SLOWDOWN_FACTOR = slowdown_factor,
@@ -52,7 +49,7 @@ def cli(slowdown_factor, input_file, trigger_activity_plugin, trigger_activity_c
 
     the_system.apps["dataflow0"] = get_dataflow_app(
         HOSTIDX = 0,
-        OUTPUT_PATH = ".",
+        # OUTPUT_PATH = ".",
         # OPERATIONAL_ENVIRONMENT = op_env,
         # TPC_REGION_NAME_PREFIX = tpc_region_name_prefix,
         # MAX_FILE_SIZE = max_file_size,
@@ -65,20 +62,49 @@ def cli(slowdown_factor, input_file, trigger_activity_plugin, trigger_activity_c
         # DEBUG=debug
     )
 
+    # get_dfo_app() expects the dataflow conf structs to be passed to dfo_gen, so we hard code them here
+    df_conf = {'dataflow0': {'host_df': 'localhost', 'max_file_size': 4294967296, 'max_trigger_record_window': 0,
+               'output_paths': ['.'], 'token_count': 9, 'source_id': 0}}
+
     the_system.apps['dfo'] = get_dfo_app(
-        DF_COUNT = 1,
+        DF_CONF = df_conf,
+        # DF_COUNT = 1,
         # TOKEN_COUNT = trigemu_token_count,
         # STOP_TIMEOUT = dfo_stop_timeout,
         HOST="localhost",
         # DEBUG=debug
     )
 
+    # Attempt to fix replay app with source ID broker
+    sourceid_broker = SourceIDBroker()
+
+    # Create a hw map file based on the input files we were given on
+    # the command line. Then we can get the SourceIDBroker to make the
+    # necessary TPInfo objects for get_trigger_app()
+    hw_map_file = NamedTemporaryFile("w")
+    for idx,f in enumerate(input_file):
+        hw_map_file.write(f"0 0 0 {idx} 3 localhost {idx} 0 0\n")
+    hw_map_file.flush() # Flush the file so the next line sees the changes
+    hw_map_service = HardwareMapService(hw_map_file.name)
+
+    # Get the list of RU processes - required to create instances of TXInfo later
+    dro_infos = hw_map_service.get_all_dro_info()
+
+    enable_firmware_tpg = False
+    enable_software_tpg = True  # We always want software TPG for replay app
+    
+    sourceid_broker.register_readout_source_ids(dro_infos)
+    tp_mode = get_tpg_mode(enable_firmware_tpg,enable_software_tpg)
+    sourceid_broker.generate_trigger_source_ids(dro_infos, tp_mode)
+    tp_infos = sourceid_broker.get_all_source_ids("Trigger")
+
     the_system.apps['trigger'] = get_trigger_app(
-        SOFTWARE_TPG_ENABLED = True,
-        FIRMWARE_TPG_ENABLED = False,
+        # SOFTWARE_TPG_ENABLED = True,
+        # FIRMWARE_TPG_ENABLED = False,
         DATA_RATE_SLOWDOWN_FACTOR = slowdown_factor,
         CLOCK_SPEED_HZ = 50_000_000,
-        RU_CONFIG = ru_configs,
+        TP_CONFIG = tp_infos,
+        # RU_CONFIG = ru_configs,
         ACTIVITY_PLUGIN = trigger_activity_plugin,
         ACTIVITY_CONFIG = eval(trigger_activity_config),
         CANDIDATE_PLUGIN = trigger_candidate_plugin,
@@ -114,7 +140,7 @@ def cli(slowdown_factor, input_file, trigger_activity_plugin, trigger_activity_c
 
     write_json_files(app_command_datas, system_command_datas, json_dir)
 
-    write_metadata_file(json_dir, "replay_tp_to_chain")
+    write_metadata_file(json_dir, "replay_tp_to_chain", "./daqconf.ini")
 
 if __name__ == '__main__':
 
