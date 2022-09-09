@@ -54,7 +54,7 @@ def cli(slowdown_factor, input_file, trigger_activity_plugin, trigger_activity_c
 
     the_system.apps["dataflow0"] = get_dataflow_app(
         HOSTIDX = 0,
-      #  OUTPUT_PATH = ".",
+        # OUTPUT_PATH = ".",
         # OPERATIONAL_ENVIRONMENT = op_env,
         # TPC_REGION_NAME_PREFIX = tpc_region_name_prefix,
         # MAX_FILE_SIZE = max_file_size,
@@ -67,12 +67,13 @@ def cli(slowdown_factor, input_file, trigger_activity_plugin, trigger_activity_c
         # DEBUG=debug
     )
 
-    # get_dfo_app expects the dataflow conf structs to be passed to dfo_gen, consider hard coding here?
-    df_conf = {'dataflow0': {'host_df': 'localhost', 'max_file_size': 4294967296, 'max_trigger_record_window': 0, 'output_paths': ['.'], 'token_count': 9, 'source_id': 0}}
+    # get_dfo_app() expects the dataflow conf structs to be passed to dfo_gen, consider hard coding here?
+    df_conf = {'dataflow0': {'host_df': 'localhost', 'max_file_size': 4294967296, 'max_trigger_record_window': 0,
+               'output_paths': ['.'], 'token_count': 9, 'source_id': 0}}
 
     the_system.apps['dfo'] = get_dfo_app(
         DF_CONF = df_conf,
-      #  DF_COUNT = 1,
+        # DF_COUNT = 1,
         # TOKEN_COUNT = trigemu_token_count,
         # STOP_TIMEOUT = dfo_stop_timeout,
         HOST="localhost",
@@ -89,9 +90,6 @@ def cli(slowdown_factor, input_file, trigger_activity_plugin, trigger_activity_c
 
     # Get the list of RU processes - required to create instances of TXInfo later
     dro_infos = hw_map_service.get_all_dro_info()
-  
-    # print("DRO INFOS: ")
-    # print(dro_infos)
 
     enable_firmware_tpg = False
     enable_software_tpg = True  # We always want software TPG for replay app
@@ -101,26 +99,16 @@ def cli(slowdown_factor, input_file, trigger_activity_plugin, trigger_activity_c
     sourceid_broker.generate_trigger_source_ids(dro_infos, tp_mode)
     tp_infos = sourceid_broker.get_all_source_ids("Trigger")
 
-    # Alternatively, manually create the tp_infos dictionary and avoid the hardware map altogether.
+    # === TO DO? Manually create the tp_infos dictionary and avoid the hardware map altogether.
     # tp_infos = {'host_trigger': 'np04-srv-001', 'trigger_window_before_ticks': 260000, 
-    #           'trigger_window_after_ticks': 2144, 'hsi_trigger_type_passthrough': True}
-
-    # print("TP INFOS:")
-    # print(tp_infos)
-
-    # We weren't generating TC_SOURCE_ID, which resulted in a key error. Create manually here.
-    #tc_infos = TCInfo()
-    #tc_infos.ru_count = 0 
-    #TC_SOURCE_ID = {"source_id": 0, "conf": tc_infos}
-    # Either append TC_SOURCE_ID to the tp_infos dictionary here, or create in trigger_gen
-    # tp_infos[] = TC_SOURCE_ID
+    #             'trigger_window_after_ticks': 2144, 'hsi_trigger_type_passthrough': True}
 
     the_system.apps['trigger'] = get_trigger_app(
-      #   SOFTWARE_TPG_ENABLED = True,
-      #  FIRMWARE_TPG_ENABLED = False,
+        # SOFTWARE_TPG_ENABLED = True,
+        # FIRMWARE_TPG_ENABLED = False,
         DATA_RATE_SLOWDOWN_FACTOR = slowdown_factor,
         CLOCK_SPEED_HZ = 50_000_000,
-        TP_CONFIG = tp_infos,             #  <=== Need to fix the building of this tp_infos dictionary
+        TP_CONFIG = tp_infos,
         # RU_CONFIG = ru_configs,
         ACTIVITY_PLUGIN = trigger_activity_plugin,
         ACTIVITY_CONFIG = eval(trigger_activity_config),
