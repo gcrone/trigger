@@ -62,7 +62,7 @@ def cli(slowdown_factor, input_file, trigger_activity_plugin, trigger_activity_c
         # DEBUG=debug
     )
 
-    # get_dfo_app() expects the dataflow conf structs to be passed to dfo_gen, consider hard coding here?
+    # get_dfo_app() expects the dataflow conf structs to be passed to dfo_gen, so we hard code them here
     df_conf = {'dataflow0': {'host_df': 'localhost', 'max_file_size': 4294967296, 'max_trigger_record_window': 0,
                'output_paths': ['.'], 'token_count': 9, 'source_id': 0}}
 
@@ -78,13 +78,13 @@ def cli(slowdown_factor, input_file, trigger_activity_plugin, trigger_activity_c
     # Attempt to fix replay app with source ID broker
     sourceid_broker = SourceIDBroker()
 
-    # Load the hw map file here to extract ru hosts, cards, slr, links, frontend types, sourceIDs and geoIDs
-    # The ru apps are determined by the combinations of hostname and card_id, the SourceID determines the 
-    # DLH (with physical slr+link information), the detId acts as system_type allows to infer the frontend_type
+    # Create a hw map file based on the input files we were given on
+    # the command line. Then we can get the SourceIDBroker to make the
+    # necessary TPInfo objects for get_trigger_app()
     hw_map_file = NamedTemporaryFile("w")
     for idx,f in enumerate(input_file):
         hw_map_file.write(f"0 0 0 {idx} 3 localhost {idx} 0 0\n")
-    hw_map_file.flush()
+    hw_map_file.flush() # Flush the file so the next line sees the changes
     hw_map_service = HardwareMapService(hw_map_file.name)
 
     # Get the list of RU processes - required to create instances of TXInfo later
@@ -97,10 +97,6 @@ def cli(slowdown_factor, input_file, trigger_activity_plugin, trigger_activity_c
     tp_mode = get_tpg_mode(enable_firmware_tpg,enable_software_tpg)
     sourceid_broker.generate_trigger_source_ids(dro_infos, tp_mode)
     tp_infos = sourceid_broker.get_all_source_ids("Trigger")
-
-    # === TO DO? Manually create the tp_infos dictionary and avoid the hardware map altogether.
-    # tp_infos = {'host_trigger': 'np04-srv-001', 'trigger_window_before_ticks': 260000, 
-    #             'trigger_window_after_ticks': 2144, 'hsi_trigger_type_passthrough': True}
 
     the_system.apps['trigger'] = get_trigger_app(
         # SOFTWARE_TPG_ENABLED = True,
