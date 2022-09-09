@@ -41,12 +41,6 @@ def cli(slowdown_factor, input_file, trigger_activity_plugin, trigger_activity_c
     
     console.log(f"Generating configs")
 
-    ru_configs=[{"host": "localhost",
-                 "card_id": 0,
-                 "region_id": i,
-                 "start_channel": 0,
-                 "channel_count": 1} for i in range(len(input_file))]
-    
     the_system.apps["replay"] = get_replay_app(
         INPUT_FILES = input_file,
         SLOWDOWN_FACTOR = slowdown_factor,
