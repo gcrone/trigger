@@ -3,6 +3,8 @@ from rich.console import Console
 from daqconf.core.system import System
 from daqconf.core.sourceid import *
 
+from tempfile import NamedTemporaryFile
+
 # Add -h as default help option
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -23,9 +25,8 @@ import click
 @click.option('--trigger-candidate-plugin', default='TriggerCandidateMakerPrescalePlugin', help="Trigger candidate algorithm plugin")
 @click.option('--trigger-candidate-config', default='dict(prescale=100)', help="Trigger candidate algorithm config (string containing python dictionary)")
 @click.option('-l', '--number-of-loops', default='-1', help="Number of times to loop over the input files (-1 for infinite)")
-@click.option('--hardware-map-file', default='./HardwareMap.txt', help="Hardware map file for new source ID changes.")
 @click.argument('json_dir', type=click.Path())
-def cli(slowdown_factor, input_file, trigger_activity_plugin, trigger_activity_config, trigger_candidate_plugin, trigger_candidate_config, number_of_loops, hardware_map_file, json_dir):
+def cli(slowdown_factor, input_file, trigger_activity_plugin, trigger_activity_config, trigger_candidate_plugin, trigger_candidate_config, number_of_loops, json_dir):
     """
       JSON_DIR: Json file output folder
     """
@@ -86,7 +87,11 @@ def cli(slowdown_factor, input_file, trigger_activity_plugin, trigger_activity_c
     # Load the hw map file here to extract ru hosts, cards, slr, links, frontend types, sourceIDs and geoIDs
     # The ru apps are determined by the combinations of hostname and card_id, the SourceID determines the 
     # DLH (with physical slr+link information), the detId acts as system_type allows to infer the frontend_type
-    hw_map_service = HardwareMapService(hardware_map_file)
+    hw_map_file = NamedTemporaryFile("w")
+    for idx,f in enumerate(input_file):
+        hw_map_file.write(f"0 0 0 {idx} 3 localhost {idx} 0 0\n")
+    hw_map_file.flush()
+    hw_map_service = HardwareMapService(hw_map_file.name)
 
     # Get the list of RU processes - required to create instances of TXInfo later
     dro_infos = hw_map_service.get_all_dro_info()
