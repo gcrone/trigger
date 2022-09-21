@@ -63,11 +63,18 @@ def cli(slowdown_factor, input_file, trigger_activity_plugin, trigger_activity_c
     )
 
     # get_dfo_app() expects the dataflow conf structs to be passed to dfo_gen, so we hard code them here
-    df_conf = {'dataflow0': {'host_df': 'localhost', 'max_file_size': 4294967296, 'max_trigger_record_window': 0,
-               'output_paths': ['.'], 'token_count': 9, 'source_id': 0}}
+    moo.otypes.load_types('daqconf/confgen.jsonnet')
+    import dunedaq.daqconf.confgen as confgen
+
+    df_apps = {'dataflow0': confgen.dataflowapp(host_df='localhost', 
+                                                max_file_size=4294967296, 
+                                                max_trigger_record_window=0,
+                                                output_paths=['.'], 
+                                                token_count=9)}
+    df_apps['dataflow0'].source_id = 0
 
     the_system.apps['dfo'] = get_dfo_app(
-        DF_CONF = df_conf,
+        DF_CONF = df_apps,
         # DF_COUNT = 1,
         # TOKEN_COUNT = trigemu_token_count,
         # STOP_TIMEOUT = dfo_stop_timeout,
@@ -93,7 +100,7 @@ def cli(slowdown_factor, input_file, trigger_activity_plugin, trigger_activity_c
     enable_firmware_tpg = False
     enable_software_tpg = True  # We always want software TPG for replay app
     
-    sourceid_broker.register_readout_source_ids(dro_infos)
+    sourceid_broker.register_readout_source_ids(dro_infos, TPGenMode.SWTPG)
     tp_mode = get_tpg_mode(enable_firmware_tpg,enable_software_tpg)
     sourceid_broker.generate_trigger_source_ids(dro_infos, tp_mode)
     tp_infos = sourceid_broker.get_all_source_ids("Trigger")
@@ -136,7 +143,8 @@ def cli(slowdown_factor, input_file, trigger_activity_plugin, trigger_activity_c
         for name,app in the_system.apps.items()
     }
 
-    system_command_datas = make_system_command_datas(the_system)
+    boot = confgen.boot()
+    system_command_datas = make_system_command_datas(boot, the_system)
 
     write_json_files(app_command_datas, system_command_datas, json_dir)
 
