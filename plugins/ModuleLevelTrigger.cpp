@@ -105,9 +105,18 @@ ModuleLevelTrigger::do_configure(const nlohmann::json& confobj)
   m_buffer_timeout = params.buffer_timeout;
   m_send_timed_out_tds = params.td_out_of_timeout;
   m_td_readout_limit = params.td_readout_limit;
+  m_ignored_tc_types = params.ignore_tc;
+  m_ignoring_tc_types = (m_ignored_tc_types.size() > 0) ? true : false;
   TLOG_DEBUG(3) << "Buffer timeout: " << m_buffer_timeout;
   TLOG_DEBUG(3) << "Should send timed out TDs: " << m_send_timed_out_tds;
   TLOG_DEBUG(3) << "TD readout limit: " << m_td_readout_limit;
+  TLOG_DEBUG(3) << "Ignoring TC types: " << m_ignoring_tc_types;
+  TLOG_DEBUG(3) << "TC types to ignore: ";
+  for (std::vector<int>::iterator it = m_ignored_tc_types.begin(); it != m_ignored_tc_types.end();){
+    TLOG_DEBUG(3) << *it; 
+    ++it; 
+  }
+
 }
 
 void
@@ -258,6 +267,16 @@ ModuleLevelTrigger::send_trigger_decisions()
       TLOG_DEBUG(1) << "Got TC of type " << static_cast<int>(tc->type) << ", timestamp " << tc->time_candidate
                     << ", start/end " << tc->time_start << "/" << tc->time_end;
       ++m_tc_received_count;
+   
+      // Option to ignore TC types (if given by config)
+      if (m_ignoring_tc_types == true){
+        TLOG_DEBUG(3) << "TC type: " << static_cast<int>(tc->type);
+        if (check_trigger_type_ignore(static_cast<int>(tc->type)) == true) { 
+          TLOG_DEBUG(3) << "ignoring...";  
+          continue; 
+        }
+      }
+
       std::lock_guard<std::mutex> lock(m_td_vector_mutex);
       add_tc(*tc);
       TLOG_DEBUG(3) << "pending tds size: " << m_pending_tds.size();
@@ -517,6 +536,20 @@ ModuleLevelTrigger::dfo_busy_callback(dfmessages::TriggerInhibit& inhibit)
     m_dfo_is_busy = inhibit.busy;
     m_livetime_counter->set_state(LivetimeCounter::State::kDead);
   }
+}
+
+bool
+ModuleLevelTrigger::check_trigger_type_ignore(int tc_type)
+{
+  bool ignore = false;
+  for (std::vector<int>::iterator it = m_ignored_tc_types.begin(); it != m_ignored_tc_types.end();){
+    if (tc_type == *it){
+      ignore = true;
+      break;
+    }
+    ++it;
+  }
+  return ignore;
 }
 
 } // namespace trigger

@@ -139,6 +139,11 @@ private:
   dfmessages::TriggerDecision create_decision(const PendingTD& pending_td);
   dfmessages::trigger_type_t m_trigger_type_shifted;
 
+  // Optional list of TC types to ignore
+  std::vector<int> m_ignored_tc_types;
+  bool m_ignoring_tc_types;
+  bool check_trigger_type_ignore(int tc_type);
+
   // Opmon variables
   using metric_counter_type = decltype(moduleleveltriggerinfo::Info::tc_received_count);
   std::atomic<metric_counter_type> m_tc_received_count{ 0 };
