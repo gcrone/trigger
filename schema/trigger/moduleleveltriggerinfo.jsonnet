@@ -10,7 +10,8 @@ local info = {
                      doc="An unsigned of 8 bytes"),
 
    info: s.record("Info", [
-       s.field("tc_received_count",                     self.uint8, 0, doc="Number of trigger candidates received."), 
+       s.field("tc_received_count",                     self.uint8, 0, doc="Number of trigger candidates received."),
+       s.field("tc_ignored_count",                      self.uint8, 0, doc="Number of trigger candidates ignored."), 
        s.field("td_sent_count",                         self.uint8, 0, doc="Number of trigger decisions added to queue."),
        s.field("td_sent_tc_count",                      self.uint8, 0, doc="Number of contributing trigger candidates associated with decisions added to queue."), 
        s.field("td_queue_timeout_expired_err_count",    self.uint8, 0, doc="Number of trigger decisions failed to be added to queue due to timeout."),
