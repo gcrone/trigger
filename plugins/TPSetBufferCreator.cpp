@@ -168,7 +168,7 @@ TPSetBufferCreator::convert_to_fragment(std::vector<TPSet>& tpsets, dfmessages::
   frag_h.window_end = input_data_request.request_information.window_end;
   frag_h.run_number = input_data_request.run_number;
   frag_h.element_id = sourceid;
-  frag_h.fragment_type = (daqdataformats::fragment_type_t)daqdataformats::FragmentType::kSW_TriggerPrimitive;
+  frag_h.fragment_type = (daqdataformats::fragment_type_t)daqdataformats::FragmentType::kTriggerPrimitive;
   frag_h.sequence_number = input_data_request.sequence_number;
   frag_h.detector_id = static_cast<uint16_t>(detdataformats::DetID::Subdetector::kDAQ); // NOLINT(build/unsigned)
 
