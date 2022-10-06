@@ -142,7 +142,7 @@ main(int argc, char** argv)
       hdf5file.get_fragment_dataset_paths(record_id, dunedaq::daqdataformats::SourceID::Subsystem::kTrigger);
     for (auto const& frag_path : frag_paths) {
       auto frag_ptr = hdf5file.get_frag_ptr(frag_path);
-      if (frag_ptr->get_fragment_type() == dunedaq::daqdataformats::FragmentType::kSW_TriggerPrimitive) {
+      if (frag_ptr->get_fragment_type() == dunedaq::daqdataformats::FragmentType::kTriggerPrimitive) {
         print_tps(std::move(frag_ptr));
       }
       if (frag_ptr->get_fragment_type() == dunedaq::daqdataformats::FragmentType::kTriggerActivity) {
