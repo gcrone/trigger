@@ -143,8 +143,10 @@ private:
   using metric_counter_type = decltype(moduleleveltriggerinfo::Info::tc_received_count);
   std::atomic<metric_counter_type> m_tc_received_count{ 0 };
   std::atomic<metric_counter_type> m_td_sent_count{ 0 };
+  std::atomic<metric_counter_type> m_new_td_sent_count{ 0 };
   std::atomic<metric_counter_type> m_td_sent_tc_count{ 0 };
   std::atomic<metric_counter_type> m_td_inhibited_count{ 0 };
+  std::atomic<metric_counter_type> m_new_td_inhibited_count{ 0 };
   std::atomic<metric_counter_type> m_td_inhibited_tc_count{ 0 };
   std::atomic<metric_counter_type> m_td_paused_count{ 0 };
   std::atomic<metric_counter_type> m_td_paused_tc_count{ 0 };
@@ -153,6 +155,7 @@ private:
   std::atomic<metric_counter_type> m_td_cleared_count{ 0 };
   std::atomic<metric_counter_type> m_td_cleared_tc_count{ 0 };
   std::atomic<metric_counter_type> m_td_total_count{ 0 };
+  std::atomic<metric_counter_type> m_new_td_total_count{ 0 };
   std::atomic<metric_counter_type> m_td_queue_timeout_expired_err_count{ 0 };
   std::atomic<metric_counter_type> m_td_queue_timeout_expired_err_tc_count{ 0 };
   std::atomic<metric_counter_type> m_lc_kLive{ 0 };

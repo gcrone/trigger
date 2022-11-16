@@ -64,10 +64,11 @@ ModuleLevelTrigger::get_info(opmonlib::InfoCollector& ci, int /*level*/)
   moduleleveltriggerinfo::Info i;
 
   i.tc_received_count = m_tc_received_count.load();
-
   i.td_sent_count = m_td_sent_count.load();
+  i.new_td_sent_count = m_new_td_sent_count.exchange(0);
   i.td_sent_tc_count = m_td_sent_tc_count.load();
   i.td_inhibited_count = m_td_inhibited_count.load();
+  i.new_td_inhibited_count = m_new_td_inhibited_count.exchange(0);
   i.td_inhibited_tc_count = m_td_inhibited_tc_count.load();
   i.td_paused_count = m_td_paused_count.load();
   i.td_paused_tc_count = m_td_paused_tc_count.load();
@@ -76,6 +77,7 @@ ModuleLevelTrigger::get_info(opmonlib::InfoCollector& ci, int /*level*/)
   i.td_cleared_count = m_td_cleared_count.load();
   i.td_cleared_tc_count = m_td_cleared_tc_count.load();
   i.td_total_count = m_td_total_count.load();
+  i.new_td_total_count = m_new_td_total_count.exchange(0);
 
   if (m_livetime_counter.get() != nullptr) {
     i.lc_kLive = m_livetime_counter->get_time(LivetimeCounter::State::kLive);
@@ -339,6 +341,7 @@ ModuleLevelTrigger::call_tc_decision(const ModuleLevelTrigger::PendingTD& pendin
       auto td_sender = get_iom_sender<dfmessages::TriggerDecision>(m_trigger_decision_connection);
       td_sender->send(std::move(decision), std::chrono::milliseconds(1));
       m_td_sent_count++;
+      m_new_td_sent_count++;
       m_td_sent_tc_count += pending_td.contributing_tcs.size();
       m_last_trigger_number++;
       add_td(pending_td);
@@ -360,9 +363,11 @@ ModuleLevelTrigger::call_tc_decision(const ModuleLevelTrigger::PendingTD& pendin
     TLOG_DEBUG(1) << "The DFO is busy. Not sending a TriggerDecision for candidate timestamp "
                   << pending_td.contributing_tcs[m_earliest_tc_index].time_candidate;
     m_td_inhibited_count++;
+    m_new_td_inhibited_count++;
     m_td_inhibited_tc_count += pending_td.contributing_tcs.size();
   }
   m_td_total_count++;
+  m_new_td_total_count++;
 }
 
 void
