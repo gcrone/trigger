@@ -10,6 +10,8 @@ local types = {
   td_out_of_timeout_b : s.boolean("td_out_of_timeout_b"),
   candidate_type_t : s.number("candidate_type_t", "u4", doc="Candidate type"),
   time_t : s.number("time_t", "i8", doc="Time"),
+  tc_type : s.number("tc_type", "i4", doc="TC type"),
+  tc_types : s.sequence("tc_types", self.tc_type, doc="List of TC types"),
 
   sourceid : s.record("SourceID", [
       s.field("element", self.element_id, doc="" ),
@@ -27,6 +29,7 @@ local types = {
       s.field("td_out_of_timeout", self.td_out_of_timeout_b, doc="Option to drop TD if TC comes out of timeout window"),
       s.field("buffer_timeout", self.time_t, 100, doc="Buffering timeout [ms] for new TCs"),
       s.field("td_readout_limit", self.time_t, 1000, doc="Time limit [ms] for the length of TD readout window"),
+      s.field("ignore_tc", self.tc_types, [], doc="List of TC types to be ignored"),
   ], doc="ModuleLevelTrigger configuration parameters"),
   
 };
