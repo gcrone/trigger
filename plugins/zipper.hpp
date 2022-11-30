@@ -254,7 +254,7 @@ public:
    */
   bool complete(const timepoint_t& now = timepoint_t::min()) const
   {
-    if (this->empty()) {
+    if (this->empty()) { 
       return false;
     }
 
@@ -309,6 +309,11 @@ public:
       ++completeness;
     }
 
+    // Currently, the cardinality is set to 2 even when there is
+    // only 1 (active) input stream during FW TP Generation. We'll temporarily
+    // reduce the cardinality condition to see if this resolves FW TPG
+    // runs, and then if it does, rethink the cardinality/completeness
+    // logic.
     return completeness >= cardinality;
   }
 

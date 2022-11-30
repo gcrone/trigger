@@ -78,7 +78,7 @@ TPChannelFilter::channel_should_be_removed(int channel) const
   uint plane = m_channel_map->get_plane_from_offline_channel(channel);
   // Check for collection
   if (plane == 0 || plane == 1) {
-    return false;
+    return !m_conf.keep_induction;
   }
   // Check for induction
   if (plane == 2) {
