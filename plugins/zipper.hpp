@@ -15,6 +15,7 @@
 #include <functional>
 #include <unordered_map>
 #include <stdexcept>
+#include <iostream>
 
 namespace zipper {
 
@@ -113,7 +114,9 @@ public:
       considered complete and thus will exhibit permanent
       undefined behavior as described above.
   */
-  void set_cardinality(size_t k) { cardinality = k; }
+  void set_cardinality(size_t k)           { cardinality = k; }
+  void set_tolerance(size_t t)             { completeness_tolerance = t; }
+  void set_tolerate_incompleteness(bool b) { tolerate_incompleteness = b; }
 
   /**
      Set the maximum latency
@@ -309,11 +312,16 @@ public:
       ++completeness;
     }
 
-    // Currently, the cardinality is set to 2 even when there is
-    // only 1 (active) input stream during FW TP Generation. We'll temporarily
-    // reduce the cardinality condition to see if this resolves FW TPG
-    // runs, and then if it does, rethink the cardinality/completeness
-    // logic.
+    // If we are choosing to tolerate "incompleteness", then check we are within the
+    // configurable tolerance level, and return a "pseudo-complete" state.
+    auto d = cardinality - completeness;
+    if(tolerate_incompleteness && (completeness < cardinality) && d<=completeness_tolerance){
+      //std::cout << "Tolerating an incomplete state of " << completeness << " when less than cardinality." << std::endl;
+      //std::cout << "The cardinality - completenss is: " << d << std::endl; 
+      return true;
+    }  
+
+    // Otherwise, completeness has been achieved.
     return completeness >= cardinality;
   }
 
@@ -321,6 +329,8 @@ private:
   size_t cardinality;
   duration_t latency{ 0 };
   ordering_t origin;
+  bool tolerate_incompleteness = false;
+  size_t completeness_tolerance = 1;
   struct Stream
   {
     size_t occupancy{ 0 };
