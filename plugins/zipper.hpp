@@ -258,11 +258,19 @@ public:
       return false;
     }
 
+    const size_t target_cardinality = streams.size();
+
+    if (target_cardinality < cardinality) { // absent streams
+      if (latency == duration_t::zero()) { // unbound latency
+        return false;
+      }
+    }
+
     size_t completeness = 0;
 
     const auto top_ident = this->top().identity;
 
-    // check each stream to see if it is "represented"
+    // check each known stream to see if it is "represented"
     for (const auto& sit : streams) {
       const auto& ident = sit.first;
       auto have = sit.second.occupancy;
@@ -276,9 +284,7 @@ public:
         continue; // stream is represented
       }
 
-      // check last ditch check where latency
-      // bounding allows us to ignore stale streams.
-
+      // unbound latency, wait as long as needed
       if (latency == duration_t::zero()) {
         // std::cerr << "no latency " << ident << std::endl;
         return false;
@@ -314,7 +320,7 @@ public:
     // reduce the cardinality condition to see if this resolves FW TPG
     // runs, and then if it does, rethink the cardinality/completeness
     // logic.
-    return completeness >= cardinality;
+    return completeness >= target_cardinality;
   }
 
 private:
