@@ -261,11 +261,19 @@ public:
       return false;
     }
 
+    const size_t target_cardinality = streams.size();
+
+    if (target_cardinality < cardinality) { // absent streams
+      if (latency == duration_t::zero()) { // unbound latency
+        return false;
+      }
+    }
+
     size_t completeness = 0;
 
     const auto top_ident = this->top().identity;
 
-    // check each stream to see if it is "represented"
+    // check each known stream to see if it is "represented"
     for (const auto& sit : streams) {
       const auto& ident = sit.first;
       auto have = sit.second.occupancy;
@@ -279,9 +287,7 @@ public:
         continue; // stream is represented
       }
 
-      // check last ditch check where latency
-      // bounding allows us to ignore stale streams.
-
+      // unbound latency, wait as long as needed
       if (latency == duration_t::zero()) {
         // std::cerr << "no latency " << ident << std::endl;
         return false;
@@ -315,14 +321,12 @@ public:
     // If we are choosing to tolerate "incompleteness", then check we are within the
     // configurable tolerance level, and return a "pseudo-complete" state.
     auto d = cardinality - completeness;
-    if(tolerate_incompleteness && (completeness < cardinality) && d<=completeness_tolerance){
-      //std::cout << "Tolerating an incomplete state of " << completeness << " when less than cardinality." << std::endl;
-      //std::cout << "The cardinality - completenss is: " << d << std::endl; 
+    if(tolerate_incompleteness && (completeness < target_cardinality) && d<=completeness_tolerance){
       return true;
     }  
 
     // Otherwise, completeness has been achieved.
-    return completeness >= cardinality;
+    return completeness >= target_cardinality;
   }
 
 private:
