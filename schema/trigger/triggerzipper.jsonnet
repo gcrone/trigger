@@ -9,6 +9,8 @@ local hier = {
     //               doc="Maximum time in milliseconds to wait to send output"),
     card: s.number("Count", dtype='u8'),
     delay: s.number("Delay", dtype='u8'),
+    tolerance: s.number("Tolerance", dtype='u8'),
+    bool: s.boolean("Boolean"),
 
     // fixme: this should be factored, not copy-pasted
     element_id : s.number("ElementId", "u4"),
@@ -20,6 +22,10 @@ local hier = {
                 doc="Max bound on latency, zero for unbound but lossless"),
         s.field("element_id", hier.element_id,
                 doc="The element of output"),
+        s.field("tolerate_incompleteness", hier.bool, false,
+                doc="Bool to configure whether or not we will tolerate incompleteness of active TSET queues."),    
+        s.field("completeness_tolerance", hier.tolerance, 1,
+                doc="Maximum number of inactive TSET queues we are willing to tolerate."),
     ], doc="TriggerZipper configuration"),
 
   

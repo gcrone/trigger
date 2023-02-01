@@ -121,6 +121,8 @@ public:
     m_cfg = cfgobj.get<cfg_t>();
     m_zm.set_max_latency(std::chrono::milliseconds(m_cfg.max_latency_ms));
     m_zm.set_cardinality(m_cfg.cardinality);
+    m_zm.set_tolerance(m_cfg.completeness_tolerance);
+    m_zm.set_tolerate_incompleteness(m_cfg.tolerate_incompleteness);
   }
 
   void do_scrap(const nlohmann::json& /*stopobj*/)
