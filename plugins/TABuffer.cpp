@@ -11,6 +11,8 @@
 #include "appfwk/DAQModuleHelper.hpp"
 #include "daqdataformats/SourceID.hpp"
 
+#include "readoutlibs/readoutinfo/InfoNljs.hpp"
+
 #include <string>
 
 namespace dunedaq {
@@ -44,8 +46,18 @@ TABuffer::init(const nlohmann::json& init_data)
 }
 
 void
-TABuffer::get_info(opmonlib::InfoCollector& /* ci */, int /*level*/)
+TABuffer::get_info(opmonlib::InfoCollector& ci, int level)
 {
+  readoutlibs::readoutinfo::ReadoutInfo ri;
+  ri.sum_payloads = m_sum_payloads.load();
+  ri.num_payloads = m_num_payloads.exchange(0);
+  ri.sum_requests = m_sum_requests.load();
+  ri.num_requests = m_num_requests.exchange(0);
+
+  ri.num_buffer_elements = m_latency_buffer_impl->occupancy();
+  ci.add(ri);
+
+  m_request_handler_impl->get_info(ci, level);
 }
 
 void
@@ -87,9 +99,6 @@ TABuffer::do_scrap(const nlohmann::json& args)
 void
 TABuffer::do_work(std::atomic<bool>& running_flag)
 {
-  size_t n_tas_received = 0;
-  size_t n_requests_received = 0;
-
   while (running_flag.load()) {
 
     bool popped_anything=false;
@@ -98,14 +107,16 @@ TABuffer::do_work(std::atomic<bool>& running_flag)
       popped_anything = true;
       for (auto const& ta: taset->objects) {
         m_latency_buffer_impl->write(TAWrapper(ta));
-        ++n_tas_received;
+	m_sum_payloads++;
+	m_num_payloads++;
       }
     }
 
     std::optional<dfmessages::DataRequest> data_request = m_input_queue_dr->try_receive(std::chrono::milliseconds(0));
     if (data_request.has_value()) {
       popped_anything = true;
-      ++n_requests_received;
+      m_sum_requests++;
+      m_num_requests++;
       m_request_handler_impl->issue_request(*data_request, false);
     }
 
@@ -114,7 +125,7 @@ TABuffer::do_work(std::atomic<bool>& running_flag)
     }
   } // while (running_flag.load())
 
-  TLOG() << get_name() << " exiting do_work() method. Received " << n_tas_received << " TAs " << " and " << n_requests_received << " data requests";
+  TLOG() << get_name() << " exiting do_work() method. Received " << m_sum_payloads << " TAs " << " and " << m_sum_requests << " data requests";
 }
 
 } // namespace trigger

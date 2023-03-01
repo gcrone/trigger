@@ -11,6 +11,8 @@
 #include "appfwk/DAQModuleHelper.hpp"
 #include "daqdataformats/SourceID.hpp"
 
+#include "readoutlibs/readoutinfo/InfoNljs.hpp"
+
 #include <string>
 
 namespace dunedaq {
@@ -44,8 +46,18 @@ TPBuffer::init(const nlohmann::json& init_data)
 }
 
 void
-TPBuffer::get_info(opmonlib::InfoCollector& /* ci */, int /*level*/)
+TPBuffer::get_info(opmonlib::InfoCollector&  ci , int level)
 {
+  readoutlibs::readoutinfo::ReadoutInfo ri;
+  ri.sum_payloads = m_sum_payloads.load();
+  ri.num_payloads = m_num_payloads.exchange(0);
+  ri.sum_requests = m_sum_requests.load();
+  ri.num_requests = m_num_requests.exchange(0);
+
+  ri.num_buffer_elements = m_latency_buffer_impl->occupancy();
+  ci.add(ri);
+
+  m_request_handler_impl->get_info(ci, level);
 }
 
 void
@@ -87,9 +99,6 @@ TPBuffer::do_scrap(const nlohmann::json& args)
 void
 TPBuffer::do_work(std::atomic<bool>& running_flag)
 {
-  size_t n_tps_received = 0;
-  size_t n_requests_received = 0;
-  
   while (running_flag.load()) {
     
     bool popped_anything=false;
@@ -99,14 +108,16 @@ TPBuffer::do_work(std::atomic<bool>& running_flag)
       popped_anything = true;
       for (auto const& tp: tpset->objects) {
         m_latency_buffer_impl->write(TPWrapper(tp));
-        ++n_tps_received;
-      }
+	m_sum_payloads++;
+	m_num_payloads++;
+       }
     }
 
     std::optional<dfmessages::DataRequest> data_request = m_input_queue_dr->try_receive(std::chrono::milliseconds(0));
     if (data_request.has_value()) {
       popped_anything = true;
-      ++n_requests_received;
+      m_sum_requests++;
+      m_num_requests++;
       m_request_handler_impl->issue_request(*data_request, false);
     }
 
@@ -115,7 +126,7 @@ TPBuffer::do_work(std::atomic<bool>& running_flag)
     }
   } // while (running_flag.load())
 
-  TLOG() << get_name() << " exiting do_work() method. Received " << n_tps_received << " TPs " << " and " << n_requests_received << " data requests";
+  TLOG() << get_name() << " exiting do_work() method. Received " << m_sum_payloads << " TPs " << " and " << m_sum_requests << " data requests";
 }
 
 } // namespace trigger

@@ -24,6 +24,7 @@
 #include "trigger/Issues.hpp"
 #include "triggeralgs/TriggerCandidate.hpp"
 
+#include <atomic>
 #include <chrono>
 #include <map>
 #include <memory>
@@ -130,6 +131,12 @@ private:
 
   // Don't actually use this, but it's currently needed as arg to request handler ctor
   std::unique_ptr<readoutlibs::FrameErrorRegistry> m_error_registry;
+
+  // STATS
+  std::atomic<int> m_num_payloads{ 0 };
+  std::atomic<int> m_sum_payloads{ 0 };
+  std::atomic<int> m_num_requests{ 0 };
+  std::atomic<int> m_sum_requests{ 0 };
 };
 } // namespace trigger
 } // namespace dunedaq
